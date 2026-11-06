@@ -1,0 +1,12 @@
+# Copy this file to key.properties and fill in your values.
+# key.properties is gitignored - never commit real credentials.
+#
+# 1. Copy: cp key.properties.example key.properties
+# 2. Create keystore (if needed):
+#    keytool -genkey -v -keystore ../bybata-release.keystore -keyalg RSA -keysize 2048 -validity 10000 -alias bybata-release
+# 3. Fill in the values below.
+
+storePassword=your-keystore-password
+keyPassword=your-key-password
+keyAlias=bybata-release
+storeFile=../bybata-release.keystore

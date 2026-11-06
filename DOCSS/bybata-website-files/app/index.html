@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Get ByBata — Trade, Gift, Donate</title>
+  <meta name="description" content="Download ByBata on the App Store or Google Play. Trade by barter, gift freely, and crowdfund campaigns.">
+  <meta property="og:title" content="Get ByBata — Trade, Gift, Donate">
+  <meta property="og:description" content="One link for every device. Download ByBata on iPhone, iPad, or Android.">
+  <meta property="og:image" content="https://mails.bybata.com/logomail.png">
+  <meta property="og:url" content="https://bybata.com/app">
+  <meta property="og:type" content="website">
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="Get ByBata">
+  <meta name="twitter:description" content="Download ByBata — trade, gift, and donate in one app.">
+  <meta name="twitter:image" content="https://mails.bybata.com/logomail.png">
+  <link rel="canonical" href="https://bybata.com/app">
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;800&display=swap" rel="stylesheet">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      background: linear-gradient(135deg, #F4F7FA 0%, #E8EEF5 100%);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      color: #1a1a1a;
+    }
+    .card {
+      background: #fff;
+      border-radius: 24px;
+      box-shadow: 0 15px 35px rgba(123, 44, 191, 0.08);
+      padding: 40px 32px;
+      max-width: 420px;
+      width: 100%;
+      text-align: center;
+    }
+    .logo { width: 72px; height: 72px; border-radius: 18px; margin-bottom: 20px; }
+    h1 { font-size: 24px; font-weight: 800; margin-bottom: 10px; color: #7B2CBF; }
+    p { font-size: 15px; color: #666; line-height: 1.55; margin-bottom: 24px; }
+    .btn {
+      display: block;
+      width: 100%;
+      padding: 14px;
+      margin-bottom: 10px;
+      border-radius: 12px;
+      font-size: 16px;
+      font-weight: 700;
+      text-decoration: none;
+      background: linear-gradient(135deg, #7B2CBF 0%, #5a189a 100%);
+      color: #fff;
+    }
+    .btn-outline {
+      background: #fff;
+      color: #7B2CBF;
+      border: 2px solid #7B2CBF;
+    }
+    .muted { font-size: 12px; color: #999; margin-top: 16px; display: inline-block; }
+    .stores { display: none; }
+    .stores.visible { display: block; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <img src="https://mails.bybata.com/logomail.png" alt="ByBata" class="logo">
+    <h1>Get ByBata</h1>
+    <p id="msg">Redirecting you to the app store…</p>
+
+    <div id="stores" class="stores">
+      <a class="btn" href="https://play.google.com/store/apps/details?id=com.bybata.bybata">Get on Google Play</a>
+      <a class="btn btn-outline" href="https://apps.apple.com/ng/app/bybata/id6779921314">Download on App Store</a>
+    </div>
+
+    <a class="muted" href="/">← bybata.com</a>
+  </div>
+  <script>
+    (function () {
+      var PLAY_STORE = 'https://play.google.com/store/apps/details?id=com.bybata.bybata';
+      var APP_STORE = 'https://apps.apple.com/ng/app/bybata/id6779921314';
+      var ua = navigator.userAgent || '';
+      var msg = document.getElementById('msg');
+      var stores = document.getElementById('stores');
+
+      if (/android/i.test(ua)) {
+        msg.textContent = 'Opening Google Play…';
+        window.location.replace(PLAY_STORE);
+        return;
+      }
+      if (/iPhone|iPad|iPod/i.test(ua)) {
+        msg.textContent = 'Opening the App Store…';
+        window.location.replace(APP_STORE);
+        return;
+      }
+
+      msg.textContent = 'Trade by barter, gift freely, and crowdfund campaigns — download on your phone.';
+      stores.className = 'stores visible';
+    })();
+  </script>
+</body>
+</html>

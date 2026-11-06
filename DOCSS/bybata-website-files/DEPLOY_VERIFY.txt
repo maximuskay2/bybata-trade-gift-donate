@@ -1,0 +1,2 @@
+Upload this file to public_html/ to confirm you are in the correct folder.
+If https://bybata.com/DEPLOY_VERIFY.txt returns 200, you are in the right place.

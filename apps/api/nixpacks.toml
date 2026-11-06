@@ -1,0 +1,21 @@
+providers = ["node"]
+
+[phases.setup]
+nixPkgs = ["nodejs_20"]
+
+[phases.install]
+cmds = [
+  "rm -rf node_modules/.cache || true",
+  "npm config set cache /tmp/npm-cache --global",
+  "npm ci --no-audit --no-fund --include=dev"
+]
+
+[phases.build]
+cmds = [
+  "npx prisma generate",
+  "npm run build",
+  "npx prisma migrate deploy"
+]
+
+[start]
+cmd = "npm run start:prod"

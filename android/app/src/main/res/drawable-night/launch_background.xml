@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Native Android launch screen (night / dark mode).
+  Shows only a flat purple color to blend seamlessly into the Flutter
+  AnimatedSplashScreen. Color matches the mid-stop of the splash
+  gradient (#5E35B1).
+-->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item>
+        <color android:color="#5E35B1"/>
+    </item>
+</layer-list>

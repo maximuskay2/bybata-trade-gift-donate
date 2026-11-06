@@ -1,0 +1,409 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BYBATA – Global GTM Launch Plan & Strategy</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400;14..32,500;14..32,600;14..32,700;14..32,800&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            background: #eef2f5;
+            font-family: 'Inter', sans-serif;
+            line-height: 1.5;
+            color: #1a1e2b;
+            padding: 40px 24px;
+        }
+        .document {
+            max-width: 1100px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 28px;
+            box-shadow: 0 25px 45px -12px rgba(0,0,0,0.2);
+            padding: 48px 56px;
+            position: relative;
+        }
+        /* Brand accent */
+        .brand-accent {
+            border-top: 5px solid #7B2CBF;
+        }
+        h1 {
+            font-size: 2.5rem;
+            font-weight: 800;
+            letter-spacing: -0.02em;
+            background: linear-gradient(135deg, #2D1B4E, #7B2CBF);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+            margin-bottom: 0.25rem;
+        }
+        .subhead {
+            color: #4a5568;
+            border-bottom: 1px solid #e2e8f0;
+            padding-bottom: 1.2rem;
+            margin-bottom: 1.8rem;
+            display: flex;
+            justify-content: space-between;
+            flex-wrap: wrap;
+        }
+        h2 {
+            font-size: 1.8rem;
+            font-weight: 700;
+            margin-top: 2rem;
+            margin-bottom: 1rem;
+            color: #1f2b3e;
+            border-left: 5px solid #7B2CBF;
+            padding-left: 20px;
+        }
+        h3 {
+            font-size: 1.35rem;
+            font-weight: 600;
+            margin: 1.5rem 0 0.75rem;
+            color: #2c3e66;
+        }
+        h4 {
+            font-weight: 600;
+            font-size: 1.1rem;
+            margin: 1rem 0 0.5rem;
+            color: #2d3e6e;
+        }
+        .badge-pillar {
+            display: inline-block;
+            background: #f3e8ff;
+            color: #7B2CBF;
+            font-weight: 700;
+            font-size: 0.7rem;
+            padding: 4px 12px;
+            border-radius: 40px;
+            margin-bottom: 12px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 1.2rem 0;
+            font-size: 0.9rem;
+        }
+        th {
+            background: #f8fafc;
+            border: 1px solid #dce3ec;
+            padding: 10px 14px;
+            text-align: left;
+            font-weight: 700;
+            color: #1e2a44;
+        }
+        td {
+            border: 1px solid #e2e8f0;
+            padding: 10px 14px;
+            vertical-align: top;
+        }
+        .diagram {
+            background: #f9fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 20px;
+            padding: 20px;
+            font-family: 'SF Mono', 'Menlo', monospace;
+            font-size: 0.8rem;
+            white-space: pre;
+            overflow-x: auto;
+            margin: 1.2rem 0;
+            line-height: 1.4;
+            color: #1e293b;
+        }
+        .highlight-box {
+            background: #f5f3ff;
+            border-left: 4px solid #7B2CBF;
+            padding: 16px 24px;
+            border-radius: 20px;
+            margin: 1.5rem 0;
+        }
+        .two-columns {
+            display: flex;
+            gap: 24px;
+            margin: 1rem 0;
+            flex-wrap: wrap;
+        }
+        .col {
+            flex: 1;
+            background: #fefefe;
+            border: 1px solid #edf2f7;
+            border-radius: 24px;
+            padding: 20px;
+        }
+        .kpi-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(240px,1fr));
+            gap: 20px;
+            margin: 20px 0;
+        }
+        .kpi-card {
+            background: #ffffff;
+            border: 1px solid #e9edf2;
+            border-radius: 24px;
+            padding: 20px;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.02);
+        }
+        footer {
+            margin-top: 48px;
+            text-align: center;
+            font-size: 0.75rem;
+            color: #6c757d;
+            border-top: 1px solid #eef2f5;
+            padding-top: 30px;
+        }
+        @media print {
+            body {
+                background: white;
+                padding: 0;
+            }
+            .document {
+                box-shadow: none;
+                padding: 0.6in;
+                max-width: 100%;
+            }
+            .diagram {
+                break-inside: avoid;
+                background: #fefefe;
+            }
+            table, .kpi-card {
+                break-inside: avoid;
+            }
+            h2, h3 {
+                break-after: avoid;
+            }
+        }
+        .math {
+            font-family: monospace;
+            background: #f1f5f9;
+            padding: 8px 12px;
+            border-radius: 14px;
+            display: inline-block;
+        }
+        .risk-table th {
+            background: #f1f0fe;
+        }
+    </style>
+</head>
+<body>
+<div class="document brand-accent">
+    <div style="display: flex; justify-content: space-between; align-items: baseline; flex-wrap: wrap;">
+        <div>
+            <h1>Global GTM Launch Plan & Strategy</h1>
+            <p style="font-size: 1rem; font-weight: 500; color: #4a5b7a;">Product & Marketing Blueprint · BYBATA v1.0.0+1</p>
+        </div>
+        <div style="text-align: right;">
+            <div><strong>Date:</strong> June 2026</div>
+            <div><strong>Status:</strong> Final · Confidential</div>
+        </div>
+    </div>
+    <div class="subhead">
+        <span>📍 bybata.com · info@bybata.com</span>
+        <span>⚡ Unified narrative: Trade · Gift · Donate — Grow Together</span>
+    </div>
+
+    <!-- PART 1: Product Strategy -->
+    <h2>Part 1: Product Strategy, Frameworks & Mechanics</h2>
+    <h3>1. Unified Narrative: The Core Brand Framework</h3>
+    <p>BYBATA shifts from financial capital to <strong>social & community capital</strong>. Onboarding, conversational search, and navigation center on three pillars under KARMA.</p>
+    <div class="diagram">
+┌─────────────────────────────────┐
+│       BYBATA ENGINE CHASSIS     │
+└────────────────┬────────────────┘
+                 │
+   ┌─────────────┼────────────────────────────┐
+   ▼             ▼                            ▼
+┌──────────┐  ┌──────────┐              ┌──────────┐
+│ BARTER   │  │ KINDNESS │              │ SUPPORT  │
+│ HUB      │  │ HUB      │              │ HUB      │
+│ (Trade)  │  │ (Gift)   │              │ (Donate) │
+└────┬─────┘  └────┬─────┘              └────┬─────┘
+     │             │                         │
+     └─────────────┼─────────────────────────┘
+                   ▼
+     ┌────────────────────────────┐
+     │   KARMA REPUTATION ENGINE  │
+     │ Newcomer ───► Legend       │
+     └────────────┬───────────────┘
+                  ▼
+     ┌────────────────────────────┐
+     │   BYC TRANSACTION LAYER    │
+     │   In‑App Utility Currency  │
+     └────────────────────────────┘
+    </div>
+    <div class="two-columns">
+        <div class="col"><span class="badge-pillar">TRADE (Barter Hub)</span><p><strong>Mechanics:</strong> 3D listing cards, in-app chat, +50 KARMA per trade.<br><strong>Philosophy:</strong> Unlock value without cash.<br><strong>Emotion:</strong> Resourcefulness, economic self-reliance.</p></div>
+        <div class="col"><span class="badge-pillar">GIFT (Kindness Hub)</span><p><strong>Mechanics:</strong> Approval flows, "pay‑it‑forward" chains, +30 KARMA.<br><strong>Philosophy:</strong> Decluttering as pro-social activity.<br><strong>Emotion:</strong> Pure generosity & neighborhood support.</p></div>
+        <div class="col"><span class="badge-pillar">DONATE (Support Hub)</span><p><strong>Mechanics:</strong> Milestone indicators, reward tiers, +40 KARMA per donation.<br><strong>Philosophy:</strong> Direct crowdfunding for locals.<br><strong>Emotion:</strong> Actionable solidarity — "You Are Not Alone."</p></div>
+    </div>
+
+    <h3>2. Conversational UX & Intent Architecture (Home V2)</h3>
+    <p>Intent‑Driven Conversational Field replaces rigid category grids. Users type prompts → Regex engine routes to Trade/Gift/Donate/Wallet modules.</p>
+    <div class="diagram">
+                     ┌────────────────────────────────┐
+                     │   USER INTENT PROMPT INPUT     │
+                     │   "I want to trade my camera"  │
+                     └────────────────┬───────────────┘
+                                      ▼
+                     ┌────────────────────────────────┐
+                     │   REGEX INTENT MATCHING ENGINE │
+                     └────────────────┬───────────────┘
+       ┌──────────────┬───────────────┼────────────────┬──────────────┐
+       ▼              ▼               ▼                ▼
+[Keyword: trade] [Keyword: gift] [Keyword: donate] [Keyword: wallet]
+       │              │               │                │
+       ▼              ▼               ▼                ▼
+  Trade Center    Gift Center     Campaign Hub    Wallet (BYC/QR)
+    </div>
+    <div class="highlight-box">
+        <strong>⚡ Natural language routing examples:</strong><br>
+        • “trade macbook” → 3D preview + [Create Trade] or [Explore Nearby Matches]<br>
+        • “gift clothes free” → [List Free Gift] / [Browse Expiring Gifts]<br>
+        • “donate to school fundraiser” → progress bar + [Contribute BYC]<br>
+        • “wallet balance” → glass card with QR, funding packages.
+    </div>
+
+    <h3>3. Gamification Dynamics: The KARMA Engine System</h3>
+    <p>KARMA transforms positive actions into verifiable trust tiers.</p>
+    <div class="math">
+        Total KARMA = Σ(Trades × 50) + Σ(Gifts × 30) + Σ(Donations × 40) + Σ(Community Posts × 10) + Verification Bonus (100) + Welcome Bonus (100)
+    </div>
+    <div class="diagram">
+  [Tier 7: LEGEND]      → Max visibility boosts + early feature access
+         ▲
+  [Tier 6: DIAMOND]     → Priority admin dispute resolution
+         ▲
+  [Tier 5: PLATINUM]    → Multi‑tier campaign structuring
+         ▲
+  [Tier 4: GOLD]        → Escrow verification bypass
+         ▲
+  [Tier 3: SILVER]      → Unlimited peer‑to‑peer chat threads
+         ▲
+  [Tier 2: BRONZE]      → Verified profile badge eligibility
+         ▲
+  [Tier 1: NEWCOMER]    → Base config (100 KARMA initial)
+    </div>
+    <p><strong>Behavioral Reward Loop:</strong> Action (swap/gift) → Variable reward (KARMA points) → Status unlock (higher visibility) → Investment (continued engagement).</p>
+
+    <h3>4. Financial Architecture: Dual‑Asset Engine</h3>
+    <div class="diagram">
+┌───────────────────────────────────────────────────────────┐
+│                  BYBATA WALLET ARCHITECTURE               │
+├─────────────────────────────┬─────────────────────────────┤
+│          KARMA              │           BYC               │
+│  (Reputation Engine)        │   (Utility Currency)        │
+├─────────────────────────────┼─────────────────────────────┤
+│ Non‑transferable            │ Transferable coin           │
+│ Accrued via social actions  │ Funded via Paystack/Stripe  │
+│ Determines trust tiers      │ Boosts, campaigns, ads      │
+└─────────────────────────────┴─────────────────────────────┘
+    </div>
+    <p><strong>Gateways:</strong> Stripe/PayPal (NA/EU) + Paystack/Flutterwave (Africa). <strong>Growth loops:</strong> BYC funding packages → listing boosts / ads manager.</p>
+
+    <h3>5. Product Trust & Security Framework</h3>
+    <ul>
+        <li><strong>Identity verification</strong> – admin queue for blue badge.</li>
+        <li><strong>Perceptual hashing (pHash)</strong> – flags duplicate/fake images.</li>
+        <li><strong>Context‑native chat protection</strong> – flags off‑platform contact attempts.</li>
+    </ul>
+
+    <!-- PART 2: Product Management & Operational Execution -->
+    <h2>Part 2: Product Management & Operational Execution</h2>
+    <h3>1. Unified Launch Checklist & Deployment Sequence</h3>
+    <p><strong>Phase 1: Stabilization (Weeks 1–2)</strong><br>
+    ✅ Update Android package ID to <code>com.bybata.bybata</code><br>
+    ✅ Audit legacy style imports (search_screen.dart) to use AppTheme references.<br>
+    ✅ Run Prisma migrations on production PostgreSQL.</p>
+    <p><strong>Phase 2: Alpha Readiness (Weeks 3–4)</strong><br>
+    ✅ Deploy <code>apple-app-site-association</code> & <code>assetlinks.json</code> to <code>/.well-known/</code><br>
+    ✅ Update LaunchScreen.storyboard → solid purple (#5E35B1) + center logo.<br>
+    ✅ Seed NestJS support module with safety FAQs.</p>
+    <p><strong>Phase 3: Global Launch Window (Launch Day)</strong><br>
+    ✅ Switch payment gateways from sandbox → live keys.<br>
+    ✅ Send first FCM broadcast: welcome + +100 KARMA.</p>
+
+    <h3>2. Post-Launch OKRs & Measurement Framework</h3>
+    <div class="kpi-grid">
+        <div class="kpi-card"><strong>🎯 Objective 1: Trustworthy ecosystem</strong><br>KR1.1: 150k+ completed transactions (90 days)<br>KR1.2: >65% verification rate<br>KR1.3: <1.5% user reports/threads</div>
+        <div class="kpi-card"><strong>📈 Objective 2: Viral growth</strong><br>KR2.1: K‑factor >1.2<br>KR2.2: D30 retention >42%<br>KR2.3: Guest → member conversion >25%</div>
+        <div class="kpi-card"><strong>💰 Objective 3: Monetization</strong><br>KR3.1: 200k+ BYC‑funded boosts<br>KR3.2: API uptime 99.95%</div>
+    </div>
+
+    <h3>3. Product Risk Matrix & Mitigation</h3>
+    <table class="risk-table">
+        <thead><tr><th>Risk</th><th>Impact</th><th>Mitigation</th></tr></thead>
+        <tbody>
+            <tr><td>Barter fraud / off‑app leaks</td><td>High</td><td>Regex flags contact words; safety banners in chat; escrow reminders.</td></tr>
+            <tr><td>Low liquidity (empty local feeds)</td><td>High</td><td>Fallback to regional browse mode + +50 KARMA for first listing.</td></tr>
+            <tr><td>Xcode / Android build failures</td><td>Critical</td><td>Lock library versions; pre‑resolve theme expressions.</td></tr>
+        </tbody>
+    </table>
+
+    <!-- PART 3: Marketing Strategy & Growth Execution -->
+    <h2>Part 3: Marketing Strategy & Growth Execution</h2>
+    <h3>1. Market Positioning & Competitor Matrix</h3>
+    <div class="diagram">
+                           High Community Integration
+                                       ▲
+                                       │
+                                       │       ★ BYBATA
+                                       │   (Trade + Gift + Donate)
+        GoFundMe                       │
+                                       │
+  ─────────────────────────────────────┼─────────────────────────► Transaction
+  Low Trust Guardrails                 │                 High Trust Guardrails
+                                       │                      (KYC + KARMA)
+                                       │
+                                       │          OLX / Jiji
+                                       │
+                                       ▼
+                            Low Community Integration
+    </div>
+    <p><strong>Value propositions:</strong> Swap without cash · Turn items into KARMA · Local crowdfunding with reward tiers.</p>
+
+    <h3>2. Multi-Phase Global Growth Lifecycle</h3>
+    <ul>
+        <li><strong>Phase 1 (Months 1–2) – Seeding:</strong> Urban hubs (Lagos, Nairobi, London, Austin). Recruit “Kindness Champions”. Hyper‑local Meta/TikTok ads (barter, sustainability).</li>
+        <li><strong>Phase 2 (Months 3–5) – Network density:</strong> Referral loops (75 KARMA + 5 BYC). Highlight success stories. Push notifications for local high‑value listings.</li>
+        <li><strong>Phase 3 (Months 6+) – Scale engine:</strong> Launch BYC Ads Manager for local businesses. Expand regions using all four payment gateways.</li>
+    </ul>
+
+    <h3>3. Integrated Performance Marketing & Campaign Playbook</h3>
+    <p><strong>Campaign: “Trade Without Cash”</strong><br>
+    Audience: Students, young professionals.<br>
+    Creative: Split‑screen barter transformations.<br>
+    Headline: “Swap your extra gear for what you need — no cash required.”</p>
+    <p><strong>Campaign: “The Anti‑Loneliness Economy” (PR)</strong><br>
+    Angle: Urban isolation solution — neighbors helping neighbors.<br>
+    Headline: “Meet the platform proving that ‘You Are Not Alone.’”</p>
+
+    <h3>4. Lifecycle Communication & Automation Mapping</h3>
+    <table>
+        <thead><tr><th>User state</th><th>Trigger</th><th>Payload copy</th><th>Route target</th></tr></thead>
+        <tbody>
+            <tr><td>Dormant guest browse</td><td>10 min exploration, no signup</td><td>“Ready to join? Create a free account → +100 KARMA bonus!”</td><td>Auth modal overlay</td></tr>
+            <tr><td>First post success</td><td>First trade/gift listing</td><td>“Your listing is live! Spend 5 BYC to boost visibility 3x.”</td><td>Promotion Center</td></tr>
+            <tr><td>Transaction milestone</td><td>Trade confirmation</td><td>“+50 KARMA earned! Check your updated trust ranking.”</td><td>Profile dashboard</td></tr>
+            <tr><td>Inactivity recovery</td><td>7 days no open</td><td>“{firstName}, see what’s being bartered near you today.”</td><td>Home V2 conversational field</td></tr>
+        </tbody>
+    </table>
+
+    <div class="highlight-box">
+        <strong>📎 Appendix – Key assets & final sign‑off</strong><br>
+        • Android build: update <code>com.example.bybata</code> → <code>com.bybata.bybata</code><br>
+        • Deep‑link test: <code>https://bybata.com/trade/{id}</code> & <code>bybata://profile/{id}</code><br>
+        • Admin panel: feature flags for KARMA config, boost types, ads review.<br>
+        • Support: info@bybata.com · 08036954577
+    </div>
+
+    <footer>
+        BYBATA Global GTM Plan – v1.0 (June 2026) · Confidential<br>
+        For internal product & marketing teams only. Align with engineering on roadmap caveats before external campaigns.
+    </footer>
+</div>
+</body>
+</html>

@@ -1,0 +1,61 @@
+version: '3.9'
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: bybata_postgres
+    environment:
+      POSTGRES_USER: bybata
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in root .env}
+      POSTGRES_DB: bybata
+    ports:
+      - "5442:5432"
+    volumes:
+      - bybata_pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U bybata"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+  minio:
+    image: minio/minio:latest
+    container_name: bybata_minio
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: bybata
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:?Set MINIO_ROOT_PASSWORD in root .env}
+    ports:
+      - "9000:9000" # S3 API
+      - "9001:9001" # MinIO Console
+    volumes:
+      - bybata_minio_data:/data
+  redis:
+    image: redis:7-alpine
+    container_name: bybata_redis
+    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD:?Set REDIS_PASSWORD in root .env}
+    ports:
+      - "6379:6379"
+    volumes:
+      - bybata_redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "--raw", "incr", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  createbuckets:
+    image: minio/mc:latest
+    container_name: bybata_minio_mc
+    depends_on:
+      - minio
+    entrypoint: ["/bin/sh","-c"]
+    command: >
+      /bin/sh -c "
+      until (/usr/bin/mc config host add local http://minio:9000 bybata ${MINIO_ROOT_PASSWORD}) do echo 'waiting for minio...' && sleep 2; done;
+      /usr/bin/mc mb --ignore-existing local/bybata;
+      /usr/bin/mc anonymous set public local/bybata;
+      exit 0;
+      "
+volumes:
+  bybata_pg_data:
+  bybata_minio_data:
+  bybata_redis_data:

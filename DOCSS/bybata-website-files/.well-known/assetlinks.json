@@ -1,0 +1,23 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "com.bybata.bybata",
+      "sha256_cert_fingerprints": [
+        "E9:1B:51:7A:37:EE:B4:A2:EA:9F:73:73:0C:2B:66:F1:9E:3C:21:50:76:A9:C3:87:F1:8F:3F:95:67:8C:9B:13",
+        "E9:1B:51:7A:37:EE:B4:A2:EA:9F:73:73:0C:2B:66:F1:9E:3C:21:50:76:A9:C3:87:F1:8F:3F:95:67:8C:9B:13"
+      ]
+    }
+  },
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "com.bybata.bybata",
+      "sha256_cert_fingerprints": [
+        "E9:1B:51:7A:37:EE:B4:A2:EA:9F:73:73:0C:2B:66:F1:9E:3C:21:50:76:A9:C3:87:F1:8F:3F:95:67:8C:9B:13"
+      ]
+    }
+  }
+]

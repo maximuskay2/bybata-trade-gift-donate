@@ -1,0 +1,46 @@
+<svg width="180" height="180" viewBox="0 0 180 180" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background circle -->
+  <circle cx="90" cy="90" r="85" fill="#4CAF50" opacity="0.1"/>
+  
+  <!-- Gift box -->
+  <rect x="65" y="80" width="50" height="40" rx="3" fill="#4CAF50"/>
+  <rect x="65" y="80" width="50" height="8" fill="#2E7D32"/>
+  
+  <!-- Gift ribbon -->
+  <rect x="87" y="70" width="6" height="60" fill="#FFD700"/>
+  <rect x="65" y="86" width="50" height="6" fill="#FFD700"/>
+  
+  <!-- Bow -->
+  <ellipse cx="82" cy="75" rx="8" ry="5" fill="#FFD700"/>
+  <ellipse cx="98" cy="75" rx="8" ry="5" fill="#FFD700"/>
+  <circle cx="90" cy="75" r="3" fill="#FFC107"/>
+  
+  <!-- Hearts floating -->
+  <g fill="#E91E63">
+    <path d="M 45 50 C 45 45, 55 45, 55 50 C 55 45, 65 45, 65 50 C 65 55, 55 65, 45 50 Z"/>
+    <path d="M 125 50 C 125 47, 130 47, 130 50 C 130 47, 135 47, 135 50 C 135 53, 130 58, 125 50 Z"/>
+    <path d="M 140 100 C 140 98, 143 98, 143 100 C 143 98, 146 98, 146 100 C 146 102, 143 105, 140 100 Z"/>
+    <path d="M 35 100 C 35 98, 38 98, 38 100 C 38 98, 41 98, 41 100 C 41 102, 38 105, 35 100 Z"/>
+  </g>
+  
+  <!-- Giving hands -->
+  <g fill="#4CAF50" opacity="0.6">
+    <!-- Hand from left -->
+    <ellipse cx="50" cy="90" rx="12" ry="6" transform="rotate(-20 50 90)"/>
+    <rect x="38" y="87" width="15" height="6" rx="3" transform="rotate(-20 45 90)"/>
+    
+    <!-- Hand from right -->
+    <ellipse cx="130" cy="90" rx="12" ry="6" transform="rotate(20 130 90)"/>
+    <rect x="127" y="87" width="15" height="6" rx="3" transform="rotate(20 135 90)"/>
+  </g>
+  
+  <!-- Joy sparkles -->
+  <g fill="#FFD700">
+    <circle cx="70" cy="60" r="2"/>
+    <circle cx="110" cy="60" r="2"/>
+    <circle cx="50" cy="130" r="2"/>
+    <circle cx="130" cy="130" r="2"/>
+    <circle cx="60" cy="140" r="1.5"/>
+    <circle cx="120" cy="140" r="1.5"/>
+  </g>
+</svg>

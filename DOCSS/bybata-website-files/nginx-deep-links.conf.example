@@ -1,0 +1,24 @@
+# Example Nginx config for bybata.com deep links + fallbacks
+# Merge into your server block for bybata.com
+
+# Apple Universal Links (no file extension, JSON content-type)
+location = /.well-known/apple-app-site-association {
+    default_type application/json;
+    add_header Access-Control-Allow-Origin *;
+}
+
+location = /.well-known/assetlinks.json {
+    default_type application/json;
+    add_header Access-Control-Allow-Origin *;
+}
+
+# Email CTA: https://bybata.com/open-app?path=/trade/UUID
+location /open-app {
+    try_files $uri $uri/ /open-app/index.html;
+}
+
+# Shared links: https://bybata.com/trade/UUID (and gift, campaign, etc.)
+# Serves fallback page when app is not installed (app opens directly when installed + verified)
+location ~ ^/(trade|gift|campaign|donation|profile|invite|request)(/|$) {
+    try_files $uri /app-link-fallback.html;
+}

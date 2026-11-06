@@ -1,0 +1,13 @@
+# Netlify / Cloudflare Pages — copy to site root as "_redirects"
+# Serves fallback HTML with 200 (URL stays /trade/..., /invite/..., etc.)
+
+/campaign/*/support  /campaign-support.html?id=:splat  200
+/trade/*      /app-link-fallback.html  200
+/gift/*       /app-link-fallback.html  200
+/campaign/*   /app-link-fallback.html  200
+/donation/*   /app-link-fallback.html  200
+/profile/*    /app-link-fallback.html  200
+/invite/*     /app-link-fallback.html  200
+/request/*    /app-link-fallback.html  200
+/get          /app/  302
+/download     /app/  302

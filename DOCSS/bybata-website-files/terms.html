@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Terms of Service | ByBata</title>
+  <meta name="description" content="ByBata Terms of Service.">
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;800&display=swap" rel="stylesheet">
+  <style>
+/* Shared ByBata legal pages — Plus Jakarta Sans + glass theme */
+:root {
+  --primary: #7B2CBF;
+  --primary-dark: #5a189a;
+  --bg: #F4F7FA;
+  --text: #1a1a1a;
+  --text-sub: #666;
+  --glass: rgba(255, 255, 255, 0.85);
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  line-height: 1.6;
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+.container { max-width: 1200px; margin: 0 auto; padding: 0 24px; }
+a { text-decoration: none; color: inherit; transition: 0.2s; }
+a.link { color: var(--primary); font-weight: 600; }
+a.link:hover { color: var(--primary-dark); text-decoration: underline; }
+
+.glass-card {
+  background: var(--glass);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  border-radius: 24px;
+  box-shadow: 0 20px 40px rgba(123, 44, 191, 0.08);
+  padding: 40px;
+}
+@media (max-width: 640px) {
+  .glass-card { padding: 24px 20px; }
+}
+
+nav {
+  padding: 20px 0;
+  background: rgba(244, 247, 250, 0.95);
+  position: sticky;
+  top: 0;
+  z-index: 999;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.04);
+}
+.nav-flex { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px; }
+.logo {
+  font-weight: 800;
+  font-size: 24px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--text);
+}
+.logo img { border-radius: 8px; display: block; }
+.nav-links { display: flex; gap: 20px; font-weight: 600; color: var(--text-sub); }
+.nav-links a:hover { color: var(--primary); }
+
+.page-header { text-align: center; padding: 60px 0 48px; }
+.page-header h1 { font-size: clamp(2rem, 5vw, 3rem); margin-bottom: 10px; color: var(--primary); font-weight: 800; }
+.page-header p { font-size: 1.1rem; color: var(--text-sub); }
+
+.content-section { padding-bottom: 80px; }
+.prose { max-width: 800px; margin: 0 auto; }
+.prose .lead { font-size: 1.05rem; margin-bottom: 28px; color: var(--text-sub); }
+.prose h3 {
+  margin-top: 32px;
+  margin-bottom: 14px;
+  font-size: 1.35rem;
+  font-weight: 800;
+  color: var(--primary);
+}
+.prose h3:first-of-type { margin-top: 0; }
+.prose h4 {
+  margin-top: 20px;
+  margin-bottom: 10px;
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--text);
+}
+.prose p { margin-bottom: 16px; color: var(--text-sub); }
+.prose ul { margin-bottom: 16px; padding-left: 22px; color: var(--text-sub); }
+.prose li { margin-bottom: 8px; }
+.prose table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+  margin: 16px 0 20px;
+}
+.prose th, .prose td {
+  border: 1px solid rgba(123, 44, 191, 0.12);
+  padding: 12px 14px;
+  text-align: left;
+  color: var(--text-sub);
+}
+.prose th {
+  background: rgba(123, 44, 191, 0.06);
+  font-weight: 700;
+  color: var(--text);
+}
+
+footer {
+  padding: 60px 0 30px;
+  border-top: 1px solid rgba(0, 0, 0, 0.05);
+  margin-top: auto;
+  background: var(--bg);
+}
+.footer-grid { display: grid; grid-template-columns: 2fr 1fr 1fr 1fr; gap: 40px; }
+.footer-col h4 { font-weight: 800; margin-bottom: 20px; font-size: 1rem; }
+.footer-col p { margin-bottom: 10px; font-size: 0.95rem; color: var(--text-sub); }
+.footer-col a:hover { color: var(--primary); }
+.footer-bottom { text-align: center; margin-top: 40px; color: #999; font-size: 0.9rem; }
+@media (max-width: 768px) {
+  .footer-grid { grid-template-columns: 1fr; gap: 28px; }
+  .nav-links { width: 100%; justify-content: center; }
+}
+
+  </style>
+</head>
+<body>
+
+  <nav>
+    <div class="container nav-flex">
+      <a href="index.html" class="logo">
+        <img src="https://mails.bybata.com/logomail.png" alt="ByBata" width="40" height="40"> ByBata
+      </a>
+      <div class="nav-links">
+        <a href="about.html">About</a>
+        <a href="help.html">Help</a>
+        <a href="contact.html">Contact</a>
+      </div>
+    </div>
+  </nav>
+
+  <div class="page-header">
+    <div class="container">
+      <h1>Terms of Service</h1>
+      <p>Last updated: May 16, 2026</p>
+    </div>
+  </div>
+
+  <section class="container content-section">
+    <div class="glass-card prose">
+      <p class="lead">These Terms govern your use of the ByBata mobile application, website at <a class="link" href="https://bybata.com">bybata.com</a>, and related services (collectively, the <strong>“Service”</strong>). By creating an account or using the Service, you agree to these Terms. If you do not agree, do not use the Service.</p>
+
+<h3>1. Who we are</h3>
+      <p>
+        The Service is operated by <strong>ByBata Inc.</strong> (“<strong>ByBata</strong>”, “<strong>we</strong>”,
+        “<strong>us</strong>”, or “<strong>our</strong>”), with operations in Lagos, Nigeria. For questions about
+        these Terms, contact us at <a class="link" href="mailto:support@bybata.com">support@bybata.com</a>.
+      </p>
+
+<h3>2. Eligibility</h3>
+      <p>You must:</p>
+      <ul>
+        <li>Be at least <strong>18 years old</strong> (or the age of majority in your jurisdiction, if higher).</li>
+        <li>Have the legal capacity to enter a binding contract.</li>
+        <li>Not be prohibited from using the Service under applicable law.</li>
+        <li>Provide accurate registration information and keep your account secure.</li>
+      </ul>
+      <p>
+        We may require identity verification (KYC) before you access certain features, including wallet withdrawals,
+        high-value trades, or receiving donations.
+      </p>
+
+<h3>3. The Service</h3>
+      <p>ByBata is a community platform that enables members to:</p>
+      <ul>
+        <li><strong>Trade</strong> — list items and services for peer-to-peer exchange, with optional escrow-style protections where offered.</li>
+        <li><strong>Gift</strong> — offer physical, digital, skill-based, or experience gifts to other members.</li>
+        <li><strong>Donate</strong> — create and support fundraising campaigns.</li>
+        <li><strong>Use a wallet</strong> — hold and transfer <strong>BYC (bYbata Coin)</strong>, fund campaigns, and pay for promotions where available.</li>
+        <li><strong>Earn Karma</strong> — receive non-transferable reputation points for positive participation.</li>
+        <li><strong>Advertise</strong> — promote listings or campaigns subject to our ad policies and fees.</li>
+        <li><strong>Communicate</strong> — message other members in connection with trades, gifts, or campaigns.</li>
+      </ul>
+      <p>
+        Features may change, be limited by region, or require verification. We do not guarantee uninterrupted
+        availability of the Service.
+      </p>
+
+<h3>4. Your account</h3>
+      <ul>
+        <li>You are responsible for all activity under your account and for safeguarding your password and device.</li>
+        <li>You may not share, sell, or transfer your account without our written consent.</li>
+        <li>Notify us promptly at <a class="link" href="mailto:support@bybata.com">support@bybata.com</a> if you suspect unauthorized access.</li>
+        <li>You may delete your account in the app (Settings). Deletion is subject to our Privacy Policy and any legal retention obligations.</li>
+      </ul>
+
+<h3>5. User conduct</h3>
+      <p>You agree <strong>not</strong> to:</p>
+      <ul>
+        <li>Use the Service for any unlawful purpose or to violate any applicable local, national, or international law.</li>
+        <li>Harass, threaten, defraud, impersonate, or harm other users.</li>
+        <li>List or promote prohibited items (including illegal goods, weapons where restricted, stolen property, or content that exploits minors).</li>
+        <li>Upload false, misleading, or infringing content (including photos you do not have rights to use).</li>
+        <li>Manipulate Karma, referrals, reviews, campaigns, or wallet balances through bots, multiple accounts, or collusion.</li>
+        <li>Attempt to bypass security, verification, rate limits, or technical restrictions.</li>
+        <li>Scrape, reverse engineer, or overload our systems without permission.</li>
+        <li>Send spam or unsolicited commercial messages outside permitted in-app channels.</li>
+      </ul>
+      <p>
+        We may investigate violations and cooperate with law enforcement where required.
+      </p>
+
+<h3>6. Listings, trades, gifts, and campaigns</h3>
+      <h3>6.1 Platform role</h3>
+      <p>
+        ByBata provides technology that helps users discover one another and complete transactions.
+        <strong>Unless we explicitly state otherwise in writing, ByBata is not a party to trades, gifts, or donations
+        between users</strong> and does not take title to items exchanged. You deal directly with other members at
+        your own risk.
+      </p>
+      <h3>6.2 Your content</h3>
+      <p>
+        You retain ownership of content you post (photos, descriptions, etc.). You grant ByBata a worldwide,
+        non-exclusive, royalty-free license to host, display, and distribute that content solely to operate and
+        promote the Service. You represent that you have all rights necessary to post your content.
+      </p>
+      <h3>6.3 Campaigns and donations</h3>
+      <p>
+        Campaign creators are responsible for the accuracy of their stories, use of funds, and compliance with
+        fundraising laws. Donors should exercise judgment before contributing. ByBata does not guarantee that
+        campaign goals will be met or that funds will be used for a particular purpose.
+      </p>
+      <h3>6.4 Escrow and disputes</h3>
+      <p>
+        Where escrow or hold features are offered, they are provided as described in the app at the time of the
+        transaction. Disputes between users should first be resolved directly. We may, but are not obligated to,
+        assist with mediation or enforcement of our policies.
+      </p>
+
+<h3>7. BYC wallet and payments</h3>
+      <ul>
+        <li><strong>BYC</strong> is a platform utility token used within ByBata. It is not legal tender, a bank deposit, or a regulated security unless otherwise required by law in your jurisdiction.</li>
+        <li>Balances, conversion rates (if shown), and fees are displayed in the app and may change with notice where required.</li>
+        <li>You are responsible for taxes arising from your use of BYC or campaign receipts.</li>
+        <li>Third-party payment processors may handle fiat on-ramps or off-ramps; their terms apply to those transactions.</li>
+        <li>We may suspend wallet activity for fraud prevention, verification, legal compliance, or account review.</li>
+        <li>Withdrawals may require additional verification (e.g. phone or identity) and processing time.</li>
+      </ul>
+
+<h3>8. Karma, referrals, and promotions</h3>
+      <p>
+        Karma points and referral rewards are discretionary program benefits with no cash value unless we
+        explicitly state otherwise. We may modify, suspend, or terminate these programs at any time. Abuse of
+        referral or Karma systems may result in forfeiture of rewards and account action.
+      </p>
+
+<h3>9. Advertising</h3>
+      <p>
+        Paid promotions must comply with these Terms and our content policies. You are responsible for the
+        accuracy of ad content and targeting. Fees are charged in BYC or as displayed at checkout. We do not
+        guarantee impressions, clicks, or conversions.
+      </p>
+
+<h3>10. Privacy</h3>
+      <p>
+        Our collection and use of personal data is described in our
+        <a class="link" href="/privacy.html">Privacy Policy</a>, which is incorporated into these Terms by reference.
+      </p>
+
+<h3>11. Intellectual property</h3>
+      <p>
+        The ByBata name, logo, app design, and underlying software are owned by ByBata or its licensors. You may
+        not use our trademarks without permission. Feedback you provide may be used by us without obligation to you.
+      </p>
+
+<h3>12. Disclaimers</h3>
+      <p>
+        THE SERVICE IS PROVIDED <strong>“AS IS”</strong> AND <strong>“AS AVAILABLE”</strong> WITHOUT WARRANTIES OF
+        ANY KIND, WHETHER EXPRESS OR IMPLIED, INCLUDING MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, AND
+        NON-INFRINGEMENT. WE DO NOT WARRANT THAT THE SERVICE WILL BE ERROR-FREE, SECURE, OR FREE OF HARMFUL
+        COMPONENTS, OR THAT USER CONTENT IS ACCURATE OR RELIABLE.
+      </p>
+
+<h3>13. Limitation of liability</h3>
+      <p>
+        TO THE MAXIMUM EXTENT PERMITTED BY LAW, BYBATA AND ITS OFFICERS, DIRECTORS, EMPLOYEES, AND AGENTS WILL NOT
+        BE LIABLE FOR ANY INDIRECT, INCIDENTAL, SPECIAL, CONSEQUENTIAL, OR PUNITIVE DAMAGES, OR ANY LOSS OF
+        PROFITS, DATA, GOODWILL, OR OTHER INTANGIBLE LOSSES, ARISING FROM YOUR USE OF THE SERVICE OR INTERACTIONS
+        WITH OTHER USERS.
+      </p>
+      <p>
+        OUR TOTAL LIABILITY FOR ANY CLAIM ARISING FROM THESE TERMS OR THE SERVICE WILL NOT EXCEED THE GREATER OF
+        (A) THE AMOUNT YOU PAID TO BYBATA IN THE TWELVE (12) MONTHS BEFORE THE CLAIM, OR (B) ONE HUNDRED U.S.
+        DOLLARS (USD $100), EXCEPT WHERE LIABILITY CANNOT BE LIMITED BY APPLICABLE LAW.
+      </p>
+
+<h3>14. Indemnification</h3>
+      <p>
+        You agree to indemnify and hold harmless ByBata from claims, damages, losses, and expenses (including
+        reasonable legal fees) arising from your use of the Service, your content, your transactions with other
+        users, or your violation of these Terms or any law.
+      </p>
+
+<h3>15. Suspension and termination</h3>
+      <p>
+        We may suspend or terminate your account at any time if we believe you violated these Terms, pose a risk to
+        the community, or as required by law. You may stop using the Service at any time. Sections that by their
+        nature should survive (including disclaimers, limitation of liability, and indemnity) will survive
+        termination.
+      </p>
+
+<h3>16. Changes</h3>
+      <p>
+        We may update these Terms from time to time. We will post the revised version on this page and update the
+        “Last updated” date. Material changes may be notified in the app or by email. Continued use after changes
+        become effective constitutes acceptance.
+      </p>
+
+<h3>17. Governing law and disputes</h3>
+      <p>
+        These Terms are governed by the laws of the <strong>Federal Republic of Nigeria</strong>, without regard to
+        conflict-of-law principles, except where mandatory consumer protections in your country of residence apply.
+      </p>
+      <p>
+        You agree to attempt good-faith resolution with us before initiating formal proceedings. Courts in
+        <strong>Lagos, Nigeria</strong> shall have exclusive jurisdiction where permitted by law.
+      </p>
+
+<h3>18. Contact</h3>
+      <p>
+        <strong>ByBata Inc.</strong><br>
+        Email: <a class="link" href="mailto:support@bybata.com">support@bybata.com</a><br>
+        Website: <a class="link" href="https://bybata.com">https://bybata.com</a>
+      </p>
+    </div>
+  </section>
+
+  <footer>
+    <div class="container">
+      <div class="footer-grid">
+        <div class="footer-col">
+          <div class="logo" style="margin-bottom: 20px;">
+            <img src="https://mails.bybata.com/logomail.png" alt="" width="36" height="36" style="border-radius:8px; vertical-align:middle; margin-right:8px;"> ByBata
+          </div>
+          <p>Building the trusted community for trading, gifting, and growing together.</p>
+        </div>
+        <div class="footer-col">
+          <h4>Company</h4>
+          <p><a href="about.html">About Us</a></p>
+          <p><a href="careers.html">Careers</a></p>
+          <p><a href="press.html">Press</a></p>
+        </div>
+        <div class="footer-col">
+          <h4>Support</h4>
+          <p><a href="help.html">Help Center</a></p>
+          <p><a href="safety.html">Safety Guidelines</a></p>
+          <p><a href="contact.html">Contact Us</a></p>
+        </div>
+        <div class="footer-col">
+          <h4>Legal</h4>
+          <p><a href="privacy.html">Privacy Policy</a></p>
+          <p><a href="terms.html">Terms of Service</a></p>
+        </div>
+      </div>
+      <div class="footer-bottom">&copy; 2026 ByBata Inc. Lagos, Nigeria. All rights reserved.</div>
+    </div>
+  </footer>
+</body>
+</html>
+

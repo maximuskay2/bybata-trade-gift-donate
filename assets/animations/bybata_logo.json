@@ -1,0 +1,150 @@
+{
+  "v": "5.7.4",
+  "fr": 30,
+  "ip": 0,
+  "op": 90,
+  "w": 500,
+  "h": 500,
+  "nm": "Bybata Logo Animation",
+  "ddd": 0,
+  "assets": [
+    {
+      "id": "img_0",
+      "w": 500,
+      "h": 500,
+      "u": "",
+      "p": "data:image/png;base64,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",
+      "e": 1
+    }
+  ],
+  "layers": [
+    {
+      "ddd": 0,
+      "ind": 1,
+      "ty": 2,
+      "nm": "Bybata Logo",
+      "refId": "img_0",
+      "sr": 1,
+      "ks": {
+        "o": {
+          "a": 1,
+          "k": [
+            {
+              "i": {
+                "x": [0.833],
+                "y": [0.833]
+              },
+              "o": {
+                "x": [0.167],
+                "y": [0.167]
+              },
+              "t": 0,
+              "s": [0]
+            },
+            {
+              "t": 15,
+              "s": [100]
+            }
+          ],
+          "ix": 11
+        },
+        "r": {
+          "a": 1,
+          "k": [
+            {
+              "i": {
+                "x": [0.833],
+                "y": [0.833]
+              },
+              "o": {
+                "x": [0.167],
+                "y": [0.167]
+              },
+              "t": 30,
+              "s": [0]
+            },
+            {
+              "i": {
+                "x": [0.833],
+                "y": [0.833]
+              },
+              "o": {
+                "x": [0.167],
+                "y": [0.167]
+              },
+              "t": 60,
+              "s": [5]
+            },
+            {
+              "t": 90,
+              "s": [0]
+            }
+          ],
+          "ix": 10
+        },
+        "p": {
+          "a": 0,
+          "k": [250, 250, 0],
+          "ix": 2
+        },
+        "a": {
+          "a": 0,
+          "k": [250, 250, 0],
+          "ix": 1
+        },
+        "s": {
+          "a": 1,
+          "k": [
+            {
+              "i": {
+                "x": [0.25, 0.25, 0.25],
+                "y": [1, 1, 1]
+              },
+              "o": {
+                "x": [0.25, 0.25, 0.25],
+                "y": [0, 0, 0]
+              },
+              "t": 0,
+              "s": [70, 70, 100]
+            },
+            {
+              "i": {
+                "x": [0.25, 0.25, 0.25],
+                "y": [1, 1, 1]
+              },
+              "o": {
+                "x": [0.25, 0.25, 0.25],
+                "y": [0, 0, 0]
+              },
+              "t": 15,
+              "s": [100, 100, 100]
+            },
+            {
+              "i": {
+                "x": [0.25, 0.25, 0.25],
+                "y": [1, 1, 1]
+              },
+              "o": {
+                "x": [0.25, 0.25, 0.25],
+                "y": [0, 0, 0]
+              },
+              "t": 75,
+              "s": [100, 100, 100]
+    }
+          "nm": "Lower Arrow",
+          "np": 3,
+          "cix": 2,
+          "bm": 0,
+          "ix": 2,
+          "mn": "ADBE Vector Group",
+          "hd": false
+        }
+      ],
+      "ip": 0,
+      "op": 120,
+      "st": 0,
+      "bm": 0
+    }
+  ],
+  "markers": []
+}

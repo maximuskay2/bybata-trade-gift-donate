@@ -1,0 +1,631 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Support campaign · ByBata</title>
+  <link rel="preconnect" href="https://bybataapi-production.up.railway.app" crossorigin>
+  <link rel="dns-prefetch" href="https://bybataapi-production.up.railway.app">
+  <style>
+    :root { --purple: #7B2CBF; --purple-dark: #5a189a; --bg: #f4f7fa; --text: #1a1a1a; --muted: #666; }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; padding: 20px; }
+    .wrap { max-width: 480px; margin: 0 auto; }
+    .card { background: #fff; border-radius: 20px; padding: 24px; box-shadow: 0 12px 32px rgba(123,44,191,.08); margin-bottom: 16px; }
+    h1 { font-size: 22px; font-weight: 800; color: var(--purple); margin-bottom: 8px; }
+    h2 { font-size: 16px; font-weight: 700; margin-bottom: 12px; }
+    p { font-size: 14px; color: var(--muted); line-height: 1.55; margin-bottom: 12px; }
+    .progress { height: 8px; background: #eee; border-radius: 8px; overflow: hidden; margin: 12px 0; }
+    .progress > span { display: block; height: 100%; background: linear-gradient(90deg, var(--purple), #9d4edd); border-radius: 8px; transition: width .3s; }
+    .stats { display: flex; gap: 16px; font-size: 13px; font-weight: 600; margin-bottom: 8px; flex-wrap: wrap; }
+    label { display: block; font-size: 12px; font-weight: 700; margin: 12px 0 6px; color: #444; }
+    input, textarea { width: 100%; padding: 12px 14px; border: 1px solid #ddd; border-radius: 12px; font: inherit; font-size: 15px; }
+    textarea { min-height: 72px; resize: vertical; }
+    .btn { display: block; width: 100%; padding: 14px; border: none; border-radius: 12px; font: inherit; font-size: 16px; font-weight: 700; cursor: pointer; margin-top: 12px; text-align: center; text-decoration: none; }
+    .btn-primary { background: linear-gradient(135deg, var(--purple), var(--purple-dark)); color: #fff; }
+    .btn-outline { background: #fff; color: var(--purple); border: 2px solid var(--purple); }
+    .hidden { display: none; }
+    .error { color: #c1121f; font-size: 13px; margin-top: 8px; }
+    .ok { color: #059669; font-size: 13px; margin-top: 8px; }
+    .badge { display: inline-block; background: rgba(123,44,191,.1); color: var(--purple); font-size: 11px; font-weight: 700; padding: 4px 10px; border-radius: 20px; margin-bottom: 12px; }
+    .user-chip { background: rgba(123,44,191,.08); border-radius: 12px; padding: 10px 14px; font-size: 13px; margin-bottom: 12px; }
+    .user-chip strong { color: var(--purple); }
+    .spinner { width: 28px; height: 28px; border: 3px solid #eee; border-top-color: var(--purple); border-radius: 50%; animation: spin .8s linear infinite; margin: 8px auto 12px; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    a { color: var(--purple); }
+    .success-icon {
+      width: 64px; height: 64px; margin: 0 auto 12px; border-radius: 50%;
+      background: linear-gradient(135deg, #059669, #10b981); color: #fff;
+      font-size: 32px; font-weight: 800; line-height: 64px; text-align: center;
+    }
+    .karma-pill {
+      background: linear-gradient(135deg, rgba(245,158,11,.18), rgba(245,158,11,.08));
+      border: 1px solid rgba(245,158,11,.35); border-radius: 14px;
+      padding: 12px 16px; margin: 16px 0; text-align: center;
+    }
+    .karma-pill span { font-size: 18px; font-weight: 800; color: #d97706; }
+    .done-detail { font-size: 15px; font-weight: 700; color: var(--text); text-align: center; }
+    .auto-line { font-size: 13px; color: var(--muted); text-align: center; min-height: 20px; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="card" id="loadingCard">
+      <div class="spinner"></div>
+      <p style="text-align:center">Loading campaign…</p>
+    </div>
+
+    <div class="card hidden" id="campaignCard">
+      <span class="badge">Community campaign</span>
+      <h1 id="campaignTitle">Campaign</h1>
+      <p id="campaignStory"></p>
+      <div class="stats">
+        <span id="raisedStat">— raised</span>
+        <span id="goalStat">— goal</span>
+        <span id="pctStat"></span>
+      </div>
+      <div class="progress"><span id="progressBar" style="width:0%"></span></div>
+      <p><small>ByBata is not a registered charity. Support is peer-to-peer in BYC (platform credits).</small></p>
+    </div>
+
+    <div class="card hidden" id="sessionCard">
+      <div class="user-chip" id="userChip"></div>
+    </div>
+
+    <div class="card hidden" id="loginCard">
+      <h2>Sign in to support</h2>
+      <p>Use the same ByBata account as the app. Required on iOS — donations complete here in your browser.</p>
+      <label for="email">Email</label>
+      <input id="email" type="email" autocomplete="email" placeholder="you@example.com">
+      <label for="password">Password</label>
+      <input id="password" type="password" autocomplete="current-password" placeholder="••••••••">
+      <button class="btn btn-primary" id="loginBtn" type="button">Sign in</button>
+      <p id="loginMsg"></p>
+    </div>
+
+    <div class="card hidden" id="donateCard">
+      <h2>Send support (BYC)</h2>
+      <p id="balanceLine"><strong>Wallet:</strong> loading…</p>
+      <label for="amount">Amount (BYC)</label>
+      <input id="amount" type="number" min="1" step="1" placeholder="50">
+      <label for="message">Message (optional)</label>
+      <textarea id="message" placeholder="Good luck with your project!"></textarea>
+      <label><input type="checkbox" id="anonymous"> Support anonymously</label>
+      <button class="btn btn-primary" id="donateBtn" type="button">Send support</button>
+      <p id="donateMsg"></p>
+      <button class="btn btn-outline hidden" id="logoutBtn" type="button">Sign out</button>
+    </div>
+
+    <div class="card hidden" id="fundCard">
+      <h2>Need BYC in your wallet?</h2>
+      <p id="fundHint">Opens the ByBata app to fund your wallet. Then switch back to this browser tab to complete support.</p>
+      <a class="btn btn-primary" id="fundAppBtn" href="bybata://wallet">Fund wallet in app</a>
+      <a class="btn btn-outline" href="mailto:support@bybata.com">Email support@bybata.com</a>
+    </div>
+
+    <div class="card hidden" id="doneCard">
+      <div class="success-icon">✓</div>
+      <h2>Thank you!</h2>
+      <p id="doneMsg">Your support was sent.</p>
+      <div class="karma-pill hidden" id="doneKarmaWrap">
+        <span id="doneKarma">+0 KARMA</span>
+      </div>
+      <p class="done-detail" id="doneAmount"></p>
+      <p class="auto-line" id="autoReturnLine"></p>
+      <a class="btn btn-primary" id="returnAppBtn" href="bybata://home">Return to ByBata app</a>
+      <button class="btn btn-outline" type="button" id="stayWebBtn">Stay on this page</button>
+    </div>
+  </div>
+
+  <script>
+    (function () {
+      var RAILWAY = 'https://bybataapi-production.up.railway.app';
+      var PROXY = '/campaign-support-proxy.php';
+      var TOKEN_KEY = 'bybata_web_token';
+      var USER_KEY = 'bybata_web_user';
+      var FETCH_MS = 20000;
+      var DONATE_MS = 90000;
+      var DONATE_IDEM_PREFIX = 'bybata_donate_idem_';
+
+      var state = { balance: 0, userName: '', userEmail: '', campaignTitle: '' };
+      var donateInFlight = false;
+      var balanceBeforeDonate = 0;
+
+      function qs(name) {
+        return new URLSearchParams(window.location.search).get(name);
+      }
+
+      function campaignIdFromPath() {
+        var m = window.location.pathname.match(/\/campaign\/([^/]+)\/support\/?$/i);
+        return m ? decodeURIComponent(m[1]) : null;
+      }
+
+      var campaignId = (campaignIdFromPath() || qs('id') || qs('campaignId') || '').trim();
+
+      function apiUrl(path) {
+        return PROXY + '?path=' + encodeURIComponent(path);
+      }
+
+      function show(id) { document.getElementById(id).classList.remove('hidden'); }
+      function hide(id) { document.getElementById(id).classList.add('hidden'); }
+
+      function token() { return sessionStorage.getItem(TOKEN_KEY) || localStorage.getItem(TOKEN_KEY); }
+      function setToken(t) {
+        if (t) {
+          sessionStorage.setItem(TOKEN_KEY, t);
+          localStorage.setItem(TOKEN_KEY, t);
+        } else {
+          sessionStorage.removeItem(TOKEN_KEY);
+          localStorage.removeItem(TOKEN_KEY);
+        }
+      }
+
+      function setUser(u) {
+        if (u) sessionStorage.setItem(USER_KEY, JSON.stringify(u));
+        else sessionStorage.removeItem(USER_KEY);
+      }
+
+      function getUser() {
+        try { return JSON.parse(sessionStorage.getItem(USER_KEY) || 'null'); } catch (_) { return null; }
+      }
+
+      function parseAmount(v) {
+        if (v == null || v === '') return 0;
+        var n = Number(v);
+        return isFinite(n) ? n : 0;
+      }
+
+      function fetchWithTimeout(url, options, ms) {
+        var ctrl = new AbortController();
+        var timer = setTimeout(function () { ctrl.abort(); }, ms || FETCH_MS);
+        return fetch(url, Object.assign({}, options || {}, { signal: ctrl.signal }))
+          .finally(function () { clearTimeout(timer); });
+      }
+
+      function formatApiError(res, body) {
+        if (body && typeof body === 'object') {
+          if (body.message) {
+            if (Array.isArray(body.message)) return body.message.join('. ');
+            return String(body.message);
+          }
+          if (body.error) return String(body.error);
+        }
+        if (res && res.status) return 'Server error (' + res.status + ').';
+        return 'Request failed.';
+      }
+
+      function isAbortError(e) {
+        return !!(e && (e.name === 'AbortError' || (e.message && e.message.toLowerCase().indexOf('abort') >= 0)));
+      }
+
+      function donateIdempotencyStorageKey() {
+        return DONATE_IDEM_PREFIX + campaignId;
+      }
+
+      function getDonateIdempotencyKey() {
+        var key = donateIdempotencyStorageKey();
+        var existing = sessionStorage.getItem(key);
+        if (existing) return existing;
+        var fresh = 'web_' + campaignId + '_' + Date.now() + '_' + Math.random().toString(36).slice(2, 10);
+        sessionStorage.setItem(key, fresh);
+        return fresh;
+      }
+
+      function clearDonateIdempotencyKey() {
+        sessionStorage.removeItem(donateIdempotencyStorageKey());
+      }
+
+      async function verifyDonationAfterTimeout(amount, authToken) {
+        try {
+          var res = await fetchWithTimeout(apiUrl('/v1/wallet/balance'), {
+            headers: { Authorization: 'Bearer ' + authToken }
+          }, 15000);
+          if (!res.ok) return false;
+          var data = await res.json();
+          var newBal = parseAmount(data.availableBalance ?? data.balance);
+          if (balanceBeforeDonate - newBal >= amount - 0.01) {
+            state.balance = newBal;
+            return true;
+          }
+        } catch (_) {}
+        return false;
+      }
+
+      function stripHandoffParams() {
+        var url = new URL(window.location.href);
+        var handoffToken = url.searchParams.get('token');
+        var handoffEmail = url.searchParams.get('email');
+        var handoffName = url.searchParams.get('name');
+        if (handoffToken) {
+          setToken(handoffToken);
+          setUser({ email: handoffEmail || '', name: handoffName || '' });
+        }
+        if (handoffToken || handoffEmail || handoffName) {
+          url.searchParams.delete('token');
+          url.searchParams.delete('email');
+          url.searchParams.delete('name');
+          history.replaceState({}, '', url.pathname + '?' + url.searchParams.toString());
+        }
+        return handoffToken;
+      }
+
+      function buildSchemeUrl(host, pathId, queryParams) {
+        var url = 'bybata://' + host;
+        if (pathId) url += '/' + encodeURIComponent(pathId);
+        var parts = [];
+        if (queryParams) {
+          Object.keys(queryParams).forEach(function (key) {
+            var val = queryParams[key];
+            if (val != null && val !== '') {
+              parts.push(encodeURIComponent(key) + '=' + encodeURIComponent(String(val)));
+            }
+          });
+        }
+        if (parts.length) url += '?' + parts.join('&');
+        return url;
+      }
+
+      function pathToBybataScheme(path, extraQuery) {
+        var clean = (path || '/').replace(/^\/+|\/+$/g, '');
+        if (!clean) return buildSchemeUrl('home', '', null);
+        var segs = clean.split('/');
+        var host = segs[0];
+        var pathId = segs.length > 1 ? segs.slice(1).join('/') : '';
+        var query = {};
+        if (extraQuery && extraQuery.length) {
+          extraQuery.split('&').forEach(function (pair) {
+            var kv = pair.split('=');
+            if (kv[0]) query[decodeURIComponent(kv[0])] = decodeURIComponent(kv[1] || '');
+          });
+        }
+        return buildSchemeUrl(host, pathId, query);
+      }
+
+      function fundWalletUrl() {
+        return buildSchemeUrl('wallet', '', { webSupport: campaignId });
+      }
+
+      /** Opens installed app — native link navigation works best on iOS Safari. */
+      function appLink(path) {
+        return pathToBybataScheme(path);
+      }
+
+      function karmaFromAmount(amount) {
+        if (!amount || amount <= 0) return 0;
+        return Math.floor(amount * 0.1);
+      }
+
+      function successAppUrl(amount, karma) {
+        return buildSchemeUrl('campaign', campaignId, {
+          webDonate: 'success',
+          amount: String(amount),
+          karma: String(karma)
+        });
+      }
+
+      function tryOpenApp(url) {
+        // Let the OS handle the custom scheme (do not preventDefault on <a> taps).
+        window.location.href = url;
+      }
+
+      function wireAppLink(el, url) {
+        if (!el) return;
+        el.href = url;
+        el.setAttribute('target', '_self');
+        el.setAttribute('rel', 'noopener noreferrer');
+      }
+
+      var autoReturnInterval = null;
+
+      function cancelAutoReturn() {
+        if (autoReturnInterval) {
+          clearInterval(autoReturnInterval);
+          autoReturnInterval = null;
+        }
+      }
+
+      function showSuccessScreen(amount, karmaFromApi) {
+        var karma = (karmaFromApi != null && karmaFromApi >= 0)
+          ? karmaFromApi
+          : karmaFromAmount(amount);
+        cancelAutoReturn();
+        hide('donateCard');
+        hide('fundCard');
+        hide('sessionCard');
+        hide('loginCard');
+        hide('loadingCard');
+        document.getElementById('doneMsg').textContent =
+          'Your support was sent to “' + state.campaignTitle + '”.';
+        document.getElementById('doneAmount').textContent = amount.toFixed(0) + ' BYC donated';
+        var karmaWrap = document.getElementById('doneKarmaWrap');
+        if (karma > 0) {
+          document.getElementById('doneKarma').textContent = '+' + karma + ' KARMA earned';
+          karmaWrap.classList.remove('hidden');
+        } else {
+          karmaWrap.classList.add('hidden');
+        }
+        show('doneCard');
+        show('campaignCard');
+        var returnUrl = successAppUrl(amount, karma);
+        wireAppLink(document.getElementById('returnAppBtn'), returnUrl);
+        document.getElementById('stayWebBtn').onclick = function () {
+          cancelAutoReturn();
+          document.getElementById('autoReturnLine').textContent =
+            'Tap “Return to ByBata app” above when you are ready.';
+        };
+        var line = document.getElementById('autoReturnLine');
+        line.textContent = 'Tap “Return to ByBata app” to open the app and see your thank-you.';
+      }
+
+      wireAppLink(document.getElementById('fundAppBtn'), fundWalletUrl());
+
+      function renderUserChip() {
+        var u = getUser();
+        var el = document.getElementById('userChip');
+        var label = (u && u.name) ? u.name : ((u && u.email) ? u.email : 'Signed in');
+        el.innerHTML = 'Signed in as <strong>' + escapeHtml(label) + '</strong>';
+        show('sessionCard');
+      }
+
+      function escapeHtml(s) {
+        return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+      }
+
+      function showLoadError(detail) {
+        hide('loadingCard');
+        document.getElementById('campaignCard').innerHTML =
+          '<p class="error">Could not load campaign.</p>' +
+          (detail ? '<p class="error"><small>' + escapeHtml(detail) + '</small></p>' : '') +
+          '<button class="btn btn-outline" type="button" id="retryBtn">Retry</button>';
+        show('campaignCard');
+        document.getElementById('retryBtn').addEventListener('click', function () { location.reload(); });
+      }
+
+      function renderCampaignCard(title, story, raised, goal) {
+        state.campaignTitle = title || 'Campaign';
+        document.getElementById('campaignTitle').textContent = state.campaignTitle;
+        document.getElementById('campaignStory').textContent = (story || '').slice(0, 400);
+        var goalVal = goal > 0 ? goal : 1;
+        var pct = Math.min(100, Math.round((raised / goalVal) * 100));
+        document.getElementById('raisedStat').textContent = raised.toFixed(0) + ' BYC raised';
+        document.getElementById('goalStat').textContent = goalVal.toFixed(0) + ' BYC goal';
+        document.getElementById('pctStat').textContent = pct + '% funded';
+        document.getElementById('progressBar').style.width = pct + '%';
+      }
+
+      function applyUrlPreview() {
+        var title = qs('title');
+        if (!title) return false;
+        var raised = parseAmount(qs('raised'));
+        var goal = parseAmount(qs('goal'));
+        var story = qs('story') || '';
+        renderCampaignCard(title, story, raised, goal);
+        hide('loadingCard');
+        show('campaignCard');
+        show('fundCard');
+        return true;
+      }
+
+      async function fetchCampaignData() {
+        var path = '/v1/public/browse/campaigns/' + encodeURIComponent(campaignId);
+        try {
+          var direct = await fetchWithTimeout(RAILWAY + path, {}, 12000);
+          if (direct.ok) return await direct.json();
+        } catch (_) {}
+        var res = await fetchWithTimeout(apiUrl(path));
+        if (!res.ok) {
+          throw new Error(res.status === 404 ? 'Campaign not found.' : 'Server error (' + res.status + ').');
+        }
+        return await res.json();
+      }
+
+      async function loadCampaign(hasPreview) {
+        if (!campaignId) {
+          document.getElementById('loadingCard').innerHTML = '<p class="error">Missing campaign id in URL.</p>';
+          return;
+        }
+        if (!hasPreview) {
+          hide('campaignCard');
+          hide('fundCard');
+          show('loadingCard');
+        }
+        try {
+          var c = await fetchCampaignData();
+          var raised = parseAmount(c.currentAmount ?? c.raisedAmount);
+          var goal = parseAmount(c.goalAmount);
+          var story = (c.description || c.shortDescription || c.story || '');
+          renderCampaignCard(c.title || 'Campaign', story, raised, goal);
+          hide('loadingCard');
+          show('campaignCard');
+          show('fundCard');
+        } catch (e) {
+          if (hasPreview) return;
+          var detail = (e && e.message) ? e.message : 'Network error';
+          if (detail.indexOf('abort') >= 0 || e.name === 'AbortError') {
+            detail = 'Request timed out. Check your connection and retry.';
+          } else if (detail === 'Failed to fetch') {
+            detail = 'Could not reach API. Upload campaign-support-proxy.php to Hostinger, or redeploy API CORS.';
+          }
+          showLoadError(detail);
+        }
+      }
+
+      async function refreshSession() {
+        var t = token();
+        if (!t) {
+          hide('donateCard');
+          hide('sessionCard');
+          show('loginCard');
+          return;
+        }
+        try {
+          var bal = await fetchWithTimeout(apiUrl('/v1/wallet/balance'), {
+            headers: { Authorization: 'Bearer ' + t }
+          });
+          if (!bal.ok) throw new Error('session');
+          var data = await bal.json();
+          state.balance = parseAmount(data.availableBalance ?? data.balance);
+          document.getElementById('balanceLine').innerHTML =
+            '<strong>Wallet balance:</strong> ' + state.balance.toFixed(2) + ' BYC';
+          renderUserChip();
+          hide('loginCard');
+          show('donateCard');
+          show('logoutBtn');
+          if (state.balance <= 0) {
+            document.getElementById('fundHint').textContent =
+              'Your wallet is empty. Fund BYC in the app, then tap Retry below or return to this page.';
+          }
+        } catch (_) {
+          setToken(null);
+          setUser(null);
+          hide('donateCard');
+          hide('sessionCard');
+          show('loginCard');
+        }
+      }
+
+      document.getElementById('loginBtn').addEventListener('click', async function () {
+        var msg = document.getElementById('loginMsg');
+        msg.textContent = '';
+        msg.className = '';
+        var email = document.getElementById('email').value.trim();
+        var password = document.getElementById('password').value;
+        if (!email || !password) {
+          msg.textContent = 'Enter email and password.';
+          msg.className = 'error';
+          return;
+        }
+        try {
+          var res = await fetchWithTimeout(apiUrl('/v1/auth/login'), {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email: email, password: password })
+          });
+          var body = await res.json().catch(function () { return {}; });
+          if (!res.ok) throw new Error(body.message || 'Login failed');
+          var access = body.accessToken || body.access_token || (body.tokens && body.tokens.accessToken);
+          if (!access) throw new Error('No token returned');
+          setToken(access);
+          var profile = body.user && body.user.profile;
+          setUser({
+            email: (body.user && body.user.email) || email,
+            name: (profile && profile.displayName) || ''
+          });
+          msg.textContent = 'Signed in.';
+          msg.className = 'ok';
+          await refreshSession();
+        } catch (e) {
+          msg.textContent = e.message || 'Login failed';
+          msg.className = 'error';
+        }
+      });
+
+      document.getElementById('donateBtn').addEventListener('click', async function () {
+        var msg = document.getElementById('donateMsg');
+        msg.textContent = '';
+        msg.className = '';
+        if (donateInFlight) return;
+        var t = token();
+        if (!t) {
+          msg.textContent = 'Please sign in first.';
+          msg.className = 'error';
+          return;
+        }
+        var amount = Number(document.getElementById('amount').value);
+        if (!amount || amount <= 0) {
+          msg.textContent = 'Enter a valid amount.';
+          msg.className = 'error';
+          return;
+        }
+        if (amount > state.balance) {
+          msg.textContent = 'Insufficient BYC. You have ' + state.balance.toFixed(2) + ' BYC — fund your wallet in the app first.';
+          msg.className = 'error';
+          show('fundCard');
+          return;
+        }
+        var btn = document.getElementById('donateBtn');
+        donateInFlight = true;
+        btn.disabled = true;
+        btn.textContent = 'Sending…';
+        balanceBeforeDonate = state.balance;
+        var res = null;
+        var body = {};
+        try {
+          res = await fetchWithTimeout(apiUrl('/v1/campaigns/' + encodeURIComponent(campaignId) + '/donate'), {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: 'Bearer ' + t
+            },
+            body: JSON.stringify({
+              amount: amount,
+              currency: 'BYC',
+              isAnonymous: document.getElementById('anonymous').checked,
+              message: document.getElementById('message').value.trim() || undefined,
+              idempotencyKey: getDonateIdempotencyKey()
+            })
+          }, DONATE_MS);
+          body = await res.json().catch(function () { return {}; });
+          if (!res.ok) {
+            throw new Error(formatApiError(res, body));
+          }
+          clearDonateIdempotencyKey();
+          var karmaEarned = parseAmount(body.karmaAwarded);
+          showSuccessScreen(amount, karmaEarned);
+        } catch (e) {
+          if (isAbortError(e)) {
+            msg.textContent = 'Taking longer than expected — checking if your support went through…';
+            msg.className = '';
+            var verified = await verifyDonationAfterTimeout(amount, t);
+            if (verified) {
+              clearDonateIdempotencyKey();
+              showSuccessScreen(amount, karmaFromAmount(amount));
+              return;
+            }
+            msg.textContent =
+              'Request timed out. Your support may still have been sent — check your email or wallet balance. ' +
+              'Do not tap again until you confirm, or you may donate twice.';
+            msg.className = 'error';
+          } else if (e.message === 'Failed to fetch') {
+            msg.textContent = 'Could not reach the server. Check your connection and try again.';
+            msg.className = 'error';
+          } else {
+            msg.textContent = e.message || formatApiError(res, body);
+            msg.className = 'error';
+          }
+        } finally {
+          donateInFlight = false;
+          btn.disabled = false;
+          btn.textContent = 'Send support';
+        }
+      });
+
+      document.getElementById('logoutBtn').addEventListener('click', function () {
+        setToken(null);
+        setUser(null);
+        hide('donateCard');
+        hide('sessionCard');
+        hide('logoutBtn');
+        show('loginCard');
+      });
+
+      stripHandoffParams();
+      var hasPreview = applyUrlPreview();
+      var signedIn = !!token();
+      if (hasPreview && !signedIn) {
+        show('loginCard');
+      } else if (hasPreview && signedIn) {
+        show('donateCard');
+        document.getElementById('balanceLine').innerHTML = '<strong>Wallet:</strong> loading…';
+      }
+
+      Promise.all([
+        loadCampaign(hasPreview),
+        signedIn ? refreshSession() : Promise.resolve()
+      ]).then(function () {
+        if (!signedIn) show('loginCard');
+      });
+    })();
+  </script>
+</body>
+</html>

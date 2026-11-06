@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Native Android launch screen.
+  Intentionally shows ONLY a flat purple color (no logo) so that when Flutter
+  boots and renders AnimatedSplashScreen (purple gradient + "BYBATA · Trade.
+  Gift. Donate and Grow Together"), the transition looks like one continuous
+  splash instead of a logo flash followed by a branded splash.
+  The color matches the mid-stop of the Flutter splash gradient (#5E35B1).
+-->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item>
+        <color android:color="#5E35B1"/>
+    </item>
+</layer-list>

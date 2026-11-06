@@ -1,0 +1,59 @@
+<svg width="180" height="180" viewBox="0 0 180 180" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background circle -->
+  <circle cx="90" cy="90" r="85" fill="#FF9800" opacity="0.1"/>
+  
+  <!-- Donation box -->
+  <rect x="60" y="90" width="60" height="50" rx="5" fill="#FF9800"/>
+  <rect x="60" y="90" width="60" height="10" fill="#F57C00"/>
+  
+  <!-- Donation slot -->
+  <rect x="82" y="80" width="16" height="4" rx="2" fill="#F57C00"/>
+  
+  <!-- Coins being donated -->
+  <g fill="#FFD700">
+    <circle cx="90" cy="70" r="6"/>
+    <text x="90" y="75" text-anchor="middle" fill="#FF9800" font-family="Arial, sans-serif" font-size="8" font-weight="bold">$</text>
+    
+    <circle cx="100" cy="60" r="4"/>
+    <circle cx="80" cy="60" r="4"/>
+  </g>
+  
+  <!-- Helping hand -->
+  <g fill="#FF9800" opacity="0.7">
+    <ellipse cx="90" cy="45" rx="15" ry="8"/>
+    <rect x="82" y="35" width="16" height="8" rx="4"/>
+  </g>
+  
+  <!-- Heart with causes -->
+  <g fill="#E91E63">
+    <path d="M 90 110 C 85 105, 75 105, 75 115 C 75 105, 65 105, 65 115 C 65 125, 90 140, 90 110 Z"/>
+    <path d="M 90 110 C 95 105, 105 105, 105 115 C 105 105, 115 105, 115 115 C 115 125, 90 140, 90 110 Z"/>
+  </g>
+  
+  <!-- Support symbols -->
+  <g fill="#FF9800" opacity="0.5">
+    <!-- Education -->
+    <rect x="40" y="50" width="12" height="8" rx="1"/>
+    <polygon points="46,50 40,44 52,44"/>
+    
+    <!-- Health -->
+    <rect x="45" y="130" width="3" height="12"/>
+    <rect x="42" y="133" width="9" height="3"/>
+    
+    <!-- Environment -->
+    <circle cx="135" cy="55" r="8"/>
+    <path d="M 130 55 Q 135 45 140 55 Q 135 65 130 55" fill="#4CAF50"/>
+    
+    <!-- Community -->
+    <circle cx="135" cy="125" r="6"/>
+    <circle cx="140" cy="135" r="4"/>
+    <circle cx="130" cy="135" r="4"/>
+  </g>
+  
+  <!-- Impact waves -->
+  <g stroke="#FF9800" stroke-width="2" fill="none" opacity="0.3">
+    <circle cx="90" cy="110" r="35"/>
+    <circle cx="90" cy="110" r="45"/>
+    <circle cx="90" cy="110" r="55"/>
+  </g>
+</svg>

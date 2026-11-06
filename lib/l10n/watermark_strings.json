@@ -1,0 +1,104 @@
+{
+  "en": {
+    "watermark": {
+      "settings_title": "Watermark Settings",
+      "settings_description": "Protect your uploads with watermarks",
+      "enable_label": "Watermarks Enabled",
+      "disable_label": "Watermarks Disabled",
+      "opacity_label": "Watermark Opacity",
+      "invisible": "Invisible",
+      "maximum": "Maximum",
+      "opacity_visible": "Visible",
+      "preview_text_visible": "Your username will be fully visible on all your uploads",
+      "preview_text_semi": "Your username will be semi-transparent on all your uploads",
+      "preview_text_invisible": "Your username will be invisible on all your uploads",
+      "disabled_warning": "Watermarks are disabled. Your uploads will not have any watermark protection.",
+      "fallback_handle": "@bybata"
+    }
+  },
+  "es": {
+    "watermark": {
+      "settings_title": "Configuración de Marca de Agua",
+      "settings_description": "Protege tus cargas con marcas de agua",
+      "enable_label": "Marcas de Agua Habilitadas",
+      "disable_label": "Marcas de Agua Deshabilitadas",
+      "opacity_label": "Opacidad de la Marca de Agua",
+      "invisible": "Invisible",
+      "maximum": "Máximo",
+      "opacity_visible": "Visible",
+      "preview_text_visible": "Tu nombre de usuario será completamente visible en todas tus cargas",
+      "preview_text_semi": "Tu nombre de usuario será semi-transparente en todas tus cargas",
+      "preview_text_invisible": "Tu nombre de usuario será invisible en todas tus cargas",
+      "disabled_warning": "Las marcas de agua están deshabilitadas. Tus cargas no tendrán protección de marca de agua.",
+      "fallback_handle": "@bybata"
+    }
+  },
+  "fr": {
+    "watermark": {
+      "settings_title": "Paramètres du Filigrane",
+      "settings_description": "Protégez vos téléchargements avec des filigranes",
+      "enable_label": "Filigranes Activés",
+      "disable_label": "Filigranes Désactivés",
+      "opacity_label": "Opacité du Filigrane",
+      "invisible": "Invisible",
+      "maximum": "Maximum",
+      "opacity_visible": "Visible",
+      "preview_text_visible": "Votre nom d'utilisateur sera complètement visible sur tous vos téléchargements",
+      "preview_text_semi": "Votre nom d'utilisateur sera semi-transparent sur tous vos téléchargements",
+      "preview_text_invisible": "Votre nom d'utilisateur sera invisible sur tous vos téléchargements",
+      "disabled_warning": "Les filigranes sont désactivés. Vos téléchargements n'auront pas de protection par filigrane.",
+      "fallback_handle": "@bybata"
+    }
+  },
+  "de": {
+    "watermark": {
+      "settings_title": "Wasserzeichen-Einstellungen",
+      "settings_description": "Schützen Sie Ihre Uploads mit Wasserzeichen",
+      "enable_label": "Wasserzeichen Aktiviert",
+      "disable_label": "Wasserzeichen Deaktiviert",
+      "opacity_label": "Wasserzeichen-Deckkraft",
+      "invisible": "Unsichtbar",
+      "maximum": "Maximum",
+      "opacity_visible": "Sichtbar",
+      "preview_text_visible": "Ihr Benutzername ist auf allen Ihren Uploads vollständig sichtbar",
+      "preview_text_semi": "Ihr Benutzername ist auf allen Ihren Uploads halbtransparent",
+      "preview_text_invisible": "Ihr Benutzername ist auf allen Ihren Uploads unsichtbar",
+      "disabled_warning": "Wasserzeichen sind deaktiviert. Ihre Uploads haben keinen Wasserzeichen-Schutz.",
+      "fallback_handle": "@bybata"
+    }
+  },
+  "pt": {
+    "watermark": {
+      "settings_title": "Configurações de Marca d'Água",
+      "settings_description": "Proteja seus uploads com marcas d'água",
+      "enable_label": "Marcas d'Água Habilitadas",
+      "disable_label": "Marcas d'Água Desabilitadas",
+      "opacity_label": "Opacidade da Marca d'Água",
+      "invisible": "Invisível",
+      "maximum": "Máximo",
+      "opacity_visible": "Visível",
+      "preview_text_visible": "Seu nome de usuário será totalmente visível em todos os seus uploads",
+      "preview_text_semi": "Seu nome de usuário será semi-transparente em todos os seus uploads",
+      "preview_text_invisible": "Seu nome de usuário será invisível em todos os seus uploads",
+      "disabled_warning": "Marcas d'água estão desabilitadas. Seus uploads não terão proteção de marca d'água.",
+      "fallback_handle": "@bybata"
+    }
+  },
+  "ar": {
+    "watermark": {
+      "settings_title": "إعدادات العلامة المائية",
+      "settings_description": "حماية تحميلاتك بعلامات مائية",
+      "enable_label": "العلامات المائية مفعلة",
+      "disable_label": "العلامات المائية معطلة",
+      "opacity_label": "عتامة العلامة المائية",
+      "invisible": "غير مرئي",
+      "maximum": "أقصى",
+      "opacity_visible": "مرئي",
+      "preview_text_visible": "سيكون اسم المستخدم الخاص بك مرئياً بالكامل على جميع تحميلاتك",
+      "preview_text_semi": "سيكون اسم المستخدم الخاص بك شفافاً جزئياً على جميع تحميلاتك",
+      "preview_text_invisible": "سيكون اسم المستخدم الخاص بك غير مرئي على جميع تحميلاتك",
+      "disabled_warning": "العلامات المائية معطلة. لن تتمتع تحميلاتك بحماية العلامة المائية.",
+      "fallback_handle": "@bybata"
+    }
+  }
+}

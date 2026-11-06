@@ -1,0 +1,46 @@
+<svg width="180" height="180" viewBox="0 0 180 180" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background circle -->
+  <circle cx="90" cy="90" r="85" fill="#14B8A6" opacity="0.1"/>
+  
+  <!-- Trading boxes -->
+  <rect x="30" y="70" width="35" height="30" rx="5" fill="#14B8A6" opacity="0.8"/>
+  <rect x="115" y="70" width="35" height="30" rx="5" fill="#14B8A6" opacity="0.8"/>
+  
+  <!-- Items in boxes -->
+  <circle cx="47" cy="80" r="6" fill="white"/>
+  <circle cx="47" cy="90" r="4" fill="white"/>
+  <circle cx="132" cy="80" r="6" fill="white"/>
+  <circle cx="132" cy="90" r="4" fill="white"/>
+  
+  <!-- Swap arrows -->
+  <g stroke="#14B8A6" stroke-width="3" fill="none" stroke-linecap="round">
+    <!-- Right arrow -->
+    <path d="M 70 75 L 110 75"/>
+    <path d="M 105 70 L 110 75 L 105 80"/>
+    
+    <!-- Left arrow -->
+    <path d="M 110 95 L 70 95"/>
+    <path d="M 75 90 L 70 95 L 75 100"/>
+  </g>
+  
+  <!-- People icons -->
+  <g fill="#14B8A6">
+    <!-- Person 1 -->
+    <circle cx="47" cy="45" r="8"/>
+    <rect x="42" y="50" width="10" height="12" rx="2"/>
+    
+    <!-- Person 2 -->
+    <circle cx="132" cy="45" r="8"/>
+    <rect x="127" y="50" width="10" height="12" rx="2"/>
+  </g>
+  
+  <!-- Trust/security elements -->
+  <g fill="#FFD700">
+    <polygon points="90,120 85,130 95,130"/>
+    <rect x="87" y="130" width="6" height="8" rx="1"/>
+  </g>
+  
+  <!-- Connection lines -->
+  <path d="M 47 62 Q 70 65 90 120" stroke="#14B8A6" stroke-width="1" opacity="0.5" fill="none"/>
+  <path d="M 132 62 Q 110 65 90 120" stroke="#14B8A6" stroke-width="1" opacity="0.5" fill="none"/>
+</svg>

@@ -1,0 +1,86 @@
+<svg width="180" height="180" viewBox="0 0 180 180" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background circle -->
+  <circle cx="90" cy="90" r="85" fill="#9C27B0" opacity="0.1"/>
+  
+  <!-- Central community hub -->
+  <circle cx="90" cy="90" r="20" fill="#9C27B0" opacity="0.3"/>
+  
+  <!-- People in community -->
+  <g fill="#9C27B0">
+    <!-- Center person -->
+    <circle cx="90" cy="85" r="6"/>
+    <rect x="86" y="90" width="8" height="10" rx="2"/>
+    
+    <!-- Person 1 - Top -->
+    <circle cx="90" cy="45" r="5"/>
+    <rect x="87" y="49" width="6" height="8" rx="1"/>
+    
+    <!-- Person 2 - Top Right -->
+    <circle cx="125" cy="60" r="5"/>
+    <rect x="122" y="64" width="6" height="8" rx="1"/>
+    
+    <!-- Person 3 - Right -->
+    <circle cx="135" cy="90" r="5"/>
+    <rect x="132" y="94" width="6" height="8" rx="1"/>
+    
+    <!-- Person 4 - Bottom Right -->
+    <circle cx="125" cy="120" r="5"/>
+    <rect x="122" y="124" width="6" height="8" rx="1"/>
+    
+    <!-- Person 5 - Bottom -->
+    <circle cx="90" cy="135" r="5"/>
+    <rect x="87" y="139" width="6" height="8" rx="1"/>
+    
+    <!-- Person 6 - Bottom Left -->
+    <circle cx="55" cy="120" r="5"/>
+    <rect x="52" y="124" width="6" height="8" rx="1"/>
+    
+    <!-- Person 7 - Left -->
+    <circle cx="45" cy="90" r="5"/>
+    <rect x="42" y="94" width="6" height="8" rx="1"/>
+    
+    <!-- Person 8 - Top Left -->
+    <circle cx="55" cy="60" r="5"/>
+    <rect x="52" y="64" width="6" height="8" rx="1"/>
+  </g>
+  
+  <!-- Connection lines -->
+  <g stroke="#9C27B0" stroke-width="2" opacity="0.4" fill="none">
+    <path d="M 90 70 L 90 57"/>
+    <path d="M 106 78 L 120 67"/>
+    <path d="M 110 90 L 129 90"/>
+    <path d="M 106 102 L 120 113"/>
+    <path d="M 90 110 L 90 130"/>
+    <path d="M 74 102 L 60 113"/>
+    <path d="M 70 90 L 51 90"/>
+    <path d="M 74 78 L 60 67"/>
+  </g>
+  
+  <!-- Shared experiences symbols -->
+  <g fill="#FFD700" opacity="0.6">
+    <!-- Conversation bubbles -->
+    <circle cx="110" cy="50" r="4"/>
+    <polygon points="108,54 110,56 112,54"/>
+    
+    <circle cx="70" cy="50" r="4"/>
+    <polygon points="68,54 70,56 72,54"/>
+    
+    <!-- Shared activities -->
+    <circle cx="140" cy="110" r="3"/>
+    <circle cx="40" cy="110" r="3"/>
+    <circle cx="110" cy="140" r="3"/>
+    <circle cx="70" cy="140" r="3"/>
+  </g>
+  
+  <!-- Unity/togetherness rings -->
+  <g stroke="#9C27B0" stroke-width="1.5" fill="none" opacity="0.2">
+    <circle cx="90" cy="90" r="35"/>
+    <circle cx="90" cy="90" r="50"/>
+  </g>
+  
+  <!-- Hearts representing relationships -->
+  <g fill="#E91E63" opacity="0.6">
+    <path d="M 120 40 C 118 38, 115 38, 115 41 C 115 38, 112 38, 112 41 C 112 44, 120 50, 120 40 Z"/>
+    <path d="M 68 40 C 66 38, 63 38, 63 41 C 63 38, 60 38, 60 41 C 60 44, 68 50, 68 40 Z"/>
+  </g>
+</svg>

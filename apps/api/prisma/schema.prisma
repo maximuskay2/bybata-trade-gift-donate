@@ -1,0 +1,2340 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id                        String                     @id @default(cuid())
+  email                     String                     @unique
+  passwordHash              String
+  googleSub                 String?                    @unique
+  appleSub                  String?                    @unique
+  role                      Role                       @default(USER)
+  createdAt                 DateTime                   @default(now())
+  updatedAt                 DateTime                   @updatedAt
+  banNote                   String?
+  banned                    Boolean                    @default(false)
+  bannedUntil               DateTime?
+  emailVerifiedAt           DateTime?
+  lastSeenAt                DateTime?
+  chatBanReason             String?
+  chatBanUntil              DateTime?
+  chatBannedAt              DateTime?
+  chatBannedBy              String?
+  isChatBanned              Boolean                    @default(false)
+  account                   Account?
+  adminActions              AdminActionAudit[]         @relation("AdminAction_Admin")
+  adminActionTargets        AdminActionAudit[]         @relation("AdminAction_TargetUser")
+  auditLogs                 AuditLog[]
+  campaignsFounded          Campaign[]
+  campaignUpdates           CampaignUpdate[]
+  communitiesCreated        Community[]
+  communityEventsOrganized  CommunityEvent[]
+  communityEventAttendances CommunityEventAttendee[]
+  communityInvitations      CommunityMember[]          @relation("CommunityMember_Inviter")
+  communityMemberships      CommunityMember[]
+  communityPosts            CommunityPost[]
+  communityPostComments     CommunityPostComment[]
+  communityPostLikes        CommunityPostLike[]
+  communityPostCommentLikes CommunityPostCommentLike[]
+  communityPollVotes        CommunityPollVote[]
+  communityPostReports      CommunityPostReport[]
+  conversationParticipants  ConversationParticipant[]
+  donations                 Donation[]
+  emailTokens               EmailVerificationToken[]
+  fundingIntents            FundingIntent[]
+  giftsGiven                Gift[]
+  giftsTargeted             Gift[]                     @relation("Gift_TargetUser")
+  giftsClaimed              GiftClaim[]
+  giftClaimBlocks           GiftClaimBlock[]           @relation("GiftClaimBlocks")
+  giftComments              GiftComment[]
+  giftLikes                 GiftLike[]
+  tradeComments             TradeComment[]
+  campaignComments          CampaignComment[]
+  giftRequestsMade          GiftRequest[]              @relation("GiftRequest_Requester")
+  karmaAccount              KarmaAccount?
+  karmaEvents               KarmaEvent[]
+  messagesSent              Message[]
+  messageReactions          MessageReaction[]
+  messageReports            MessageReport[]
+  negotiationsAsBidder      Negotiation[]              @relation("Negotiation_Bidder")
+  negotiationsAsOwner       Negotiation[]              @relation("Negotiation_Owner")
+  negotiationMessages       NegotiationMessage[]
+  notifications             Notification[]
+  communityInvitesSent      CommunityInvite[]          @relation("CommunityInvite_Inviter")
+  communityInvitesReceived  CommunityInvite[]          @relation("CommunityInvite_Invitee")
+  notificationSettings      NotificationSettings?
+  deviceTokens              UserDeviceToken[]
+  passwordResetTokens       PasswordResetToken[]
+  walletPinResetTokens       WalletPinResetToken[]
+  emailPreferences          EmailPreference?
+  emailLogs                 EmailLog[]
+  profile                   Profile?
+  sessions                  Session[]
+  trades                    Trade[]
+  offersPlaced              TradeOffer[]               @relation("TradeOffer_Bidder")
+  transfersReceived         Transfer[]                 @relation("Transfer_Recipient")
+  transfersSent             Transfer[]                 @relation("Transfer_Sender")
+  userAchievements          UserAchievement[]
+  verificationDocuments     VerificationDocument[]
+  walletTransactions        WalletTransaction[]
+  withdrawals               Withdrawal[]
+  bankDetails               BankDetails[]
+  // Week 3 additions
+  walletSecurity            WalletSecurity?
+  suspiciousActivities      SuspiciousActivity[]
+  adSchedules               AdSchedule[]
+  boostPurchases            BoostPurchase[]
+  blockedUsers              UserBlock[]                @relation("UserBlock_Blocker")
+  blockedByUsers            UserBlock[]                @relation("UserBlock_Blocked")
+  mediaAssets               MediaAsset[]
+  followers                 UserFollow[]              @relation("UserFollow_Followed")
+  following                 UserFollow[]              @relation("UserFollow_Follower")
+  profileReviewsReceived    ProfileReview[]           @relation("ProfileReview_Reviewee")
+  profileReviewsGiven       ProfileReview[]           @relation("ProfileReview_Reviewer")
+  profileLikesReceived      ProfileLike[]             @relation("ProfileLike_Liked")
+  profileLikesGiven         ProfileLike[]             @relation("ProfileLike_Liker")
+  userReportsReceived       UserReport[]              @relation("UserReport_ReportedUser")
+  userReportsGiven          UserReport[]              @relation("UserReport_Reporter")
+  userAppeals               UserAppeal[]
+  referralsGiven            UserReferral[]            @relation("UserReferral_Referrer")
+  referralsReceived         UserReferral[]            @relation("UserReferral_Referred")
+  supportTickets            SupportTicket[]
+  supportChatSessions       SupportChatSession[]
+  supportTicketsAssigned    SupportTicket[]           @relation("SupportTicket_AssignedAdmin")
+  supportChatSessionsAssigned SupportChatSession[]      @relation("SupportChatSession_AssignedAdmin")
+  tradesModerated           Trade[]                   @relation("Trade_AdminModerator")
+  giftsModerated            Gift[]                    @relation("Gift_AdminModerator")
+  campaignsModerated        Campaign[]                @relation("Campaign_AdminModerator")
+}
+
+model UserFollow {
+  id         String   @id @default(cuid())
+  followerId String
+  followedId String
+  createdAt  DateTime @default(now())
+  follower   User     @relation("UserFollow_Follower", fields: [followerId], references: [id], onDelete: Cascade)
+  followed   User     @relation("UserFollow_Followed", fields: [followedId], references: [id], onDelete: Cascade)
+
+  @@unique([followerId, followedId])
+  @@index([followerId])
+  @@index([followedId])
+}
+
+model ProfileReview {
+  id          String   @id @default(cuid())
+  revieweeId  String   // User being reviewed
+  reviewerId  String   // User who left the review
+  rating      Int      // 1-5 stars
+  comment     String?
+  sourceType  String   // TRADE, GIFT, DONATION
+  sourceId    String   // tradeId, giftId, or donationId
+  createdAt   DateTime @default(now())
+  reviewee    User     @relation("ProfileReview_Reviewee", fields: [revieweeId], references: [id], onDelete: Cascade)
+  reviewer    User     @relation("ProfileReview_Reviewer", fields: [reviewerId], references: [id], onDelete: Cascade)
+
+  @@unique([sourceType, sourceId, reviewerId])
+  @@index([revieweeId])
+  @@index([reviewerId])
+}
+
+model ProfileLike {
+  id        String   @id @default(cuid())
+  likedId   String   // User whose profile was liked
+  likerId   String   // User who liked
+  createdAt DateTime @default(now())
+  liked     User     @relation("ProfileLike_Liked", fields: [likedId], references: [id], onDelete: Cascade)
+  liker     User     @relation("ProfileLike_Liker", fields: [likerId], references: [id], onDelete: Cascade)
+
+  @@unique([likedId, likerId])
+  @@index([likedId])
+  @@index([likerId])
+}
+
+model Profile {
+  id                         String    @id @default(cuid())
+  userId                     String    @unique
+  username                   String?   @unique
+  displayName                String
+  avatarKey                  String?
+  bio                        String?
+  phone                      String?
+  kycStatus                  KycStatus @default(NOT_VERIFIED)
+  kycNote                    String?
+  allowDirectMessages        Boolean   @default(true)
+  isProfilePublic            Boolean   @default(true)
+  showEmail                  Boolean   @default(false)
+  showLocation               Boolean   @default(true)
+  showPhone                  Boolean   @default(false)
+  phoneVerificationCode      String?   @map("phone_verification_code")
+  phoneVerificationExpiresAt DateTime? @map("phone_verification_expires_at")
+  phoneVerifiedAt            DateTime? @map("phone_verified_at")
+  // Wallet security fields (Week 3)
+  walletPinHash              String?
+  walletPinSetAt             DateTime?
+  biometricEnabled           Boolean   @default(false)
+  lastWalletActivity         DateTime?
+  referralCode               String?   @unique @map("referral_code")
+  preferredFiatCurrency      String    @default("NGN") @map("preferred_fiat_currency")
+  countryCode                String?   @map("country_code")
+  timezone                   String?   @default("UTC")
+  location                   String?
+  /// Last known coordinates for nearby listing alerts (not shown publicly).
+  lastLatitude               Float?    @map("last_latitude")
+  lastLongitude              Float?    @map("last_longitude")
+  lastLocationAt             DateTime? @map("last_location_at")
+  user                       User      @relation(fields: [userId], references: [id])
+}
+
+model UserReferral {
+  id                String   @id @default(cuid())
+  referrerId        String
+  referredUserId    String
+  referralCode     String
+  status           ReferralStatus @default(SIGNED_UP)
+  karmaAwarded      Int      @default(0)
+  bycAwarded        Decimal  @default(0) @db.Decimal(18, 6)
+  signedUpAt       DateTime @default(now())
+  firstTradeAt     DateTime?
+  firstDonationAt  DateTime?
+  firstGiftAt      DateTime?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+  referrer         User     @relation("UserReferral_Referrer", fields: [referrerId], references: [id], onDelete: Cascade)
+  referredUser     User     @relation("UserReferral_Referred", fields: [referredUserId], references: [id], onDelete: Cascade)
+
+  @@unique([referrerId, referredUserId])
+  @@index([referrerId])
+  @@index([referredUserId])
+  @@index([referralCode])
+  @@index([status])
+}
+
+model Session {
+  id               String   @id @default(cuid())
+  userId           String
+  refreshTokenHash String
+  expiresAt        DateTime
+  createdAt        DateTime @default(now())
+  user             User     @relation(fields: [userId], references: [id])
+}
+
+model UserBlock {
+  id        String   @id @default(cuid())
+  blockerId String
+  blockedId String
+  reason    String?
+  createdAt DateTime @default(now())
+  blocker   User     @relation("UserBlock_Blocker", fields: [blockerId], references: [id])
+  blocked   User     @relation("UserBlock_Blocked", fields: [blockedId], references: [id])
+
+  @@unique([blockerId, blockedId])
+  @@index([blockerId])
+  @@index([blockedId])
+}
+
+enum ListingMediaType {
+  IMAGE
+  VIDEO
+}
+
+model Trade {
+  id                 String          @id @default(cuid())
+  ownerId            String
+  title              String
+  description        String?
+  status             TradeStatus     @default(OPEN)
+  createdAt          DateTime        @default(now())
+  acceptedOfferId    String?         @unique
+  cancelledAt        DateTime?
+  closedAt           DateTime?
+  mediaType          ListingMediaType @default(IMAGE)
+  mediaKeys          String[]
+  videoKey           String?
+  thumbnailKey       String?
+  location           String?
+  allowDelivery      Boolean         @default(false)
+  allowShipping      Boolean         @default(false)
+  category           TradeCategory   @default(OTHERS)
+  enableBYCPromotion Boolean         @default(false)
+  isNegotiable       Boolean         @default(true)
+  requiresPickup     Boolean         @default(true)
+  metadata           Json?
+  // Promotion fields (Week 3)
+  activePromotionId  String?
+  promotionExpiresAt DateTime?
+  negotiations       Negotiation[]
+  acceptedOffer      TradeOffer?     @relation("Trade_AcceptedOffer", fields: [acceptedOfferId], references: [id])
+  activePromotion    Promotion?      @relation("Trade_ActivePromotion", fields: [activePromotionId], references: [id])
+  owner              User            @relation(fields: [ownerId], references: [id])
+  offers             TradeOffer[]    @relation("Trade_Offers")
+  offeredInOffers    TradeOffer[]    @relation("TradeOffer_OfferedTrade") // Trades offered in other offers
+  requestedInOffers  TradeOffer[]    @relation("TradeOffer_RequestedTrade") // Trades owner requested when countering
+  linkedPosts        CommunityPost[] @relation("PostLinkedTrade")
+  comments           TradeComment[]
+  adminModerationAction ListingModerationAction?
+  adminModerationReason String?
+  adminModeratedAt      DateTime?
+  adminModeratedById    String?
+  adminModeratedBy      User?           @relation("Trade_AdminModerator", fields: [adminModeratedById], references: [id])
+}
+
+model WalletTransaction {
+  id                 String          @id @default(cuid())
+  userId             String
+  type               TransactionType
+  amount             Decimal         @db.Decimal(18, 6)
+  status             TxStatus        @default(SUCCESS)
+  memo               String?
+  createdAt          DateTime        @default(now())
+  accountId          String?
+  idempotencyKey     String?         @unique
+  promotionId        String?
+  metadata           Json?
+  referenceId        String?
+  referenceType      String?
+  transferId         String?
+  // Verification fields (Week 3)
+  verificationMethod String? // 'PIN', 'BIOMETRIC', 'NONE'
+  verifiedAt         DateTime?
+  sessionToken       String?
+  // AdSchedule relation (Week 3)
+  adSchedule         AdSchedule?
+  withdrawal         Withdrawal?     @relation("WithdrawalTransaction")
+  account            Account?        @relation(fields: [accountId], references: [id])
+  promotion          Promotion?      @relation(fields: [promotionId], references: [id])
+  transfer           Transfer?       @relation(fields: [transferId], references: [id])
+  user               User            @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@index([type])
+  @@index([status])
+  @@index([referenceType, referenceId])
+  @@index([transferId])
+}
+
+model Withdrawal {
+  id            String           @id @default(cuid())
+  userId        String
+  amount        Decimal          @db.Decimal(18, 6)
+  currency      String           @default("BYC")
+  status        WithdrawalStatus @default(PENDING)
+  memo          String?
+  destination   Json?
+  transactionId String?          @unique
+  completedAt   DateTime?
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
+  user          User             @relation(fields: [userId], references: [id])
+  transaction   WalletTransaction? @relation("WithdrawalTransaction", fields: [transactionId], references: [id])
+  bankDetails   BankDetails?     @relation("WithdrawalBankDetails", fields: [bankDetailsId], references: [id])
+  bankDetailsId String?
+
+  @@index([userId])
+  @@index([status])
+  @@index([createdAt])
+  @@index([bankDetailsId])
+}
+
+model BankDetails {
+  id                String       @id @default(cuid())
+  userId            String
+  bankName          String
+  accountHolderName String
+  accountNumber     String       @unique
+  accountType       String       @default("Savings")
+  createdAt         DateTime     @default(now())
+  updatedAt         DateTime     @updatedAt
+  user              User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  withdrawals       Withdrawal[] @relation("WithdrawalBankDetails")
+
+  @@index([userId])
+  @@index([accountNumber])
+}
+
+model FundingIntent {
+  id                String              @id @default(cuid())
+  userId            String
+  provider          String
+  currency          String
+  amountMinor       Int
+  status            FundingIntentStatus @default(PENDING)
+  intentReference   String              @unique
+  providerReference String?             @unique
+  initPayload       Json?
+  webhookPayload    Json?
+  resolvedAt        DateTime?
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
+  user              User                @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@index([provider])
+  @@index([status])
+}
+
+model Transfer {
+  id               String              @id @default(cuid())
+  senderId         String
+  recipientId      String
+  amount           Decimal             @db.Decimal(18, 6)
+  memo             String?
+  status           TxStatus            @default(PENDING)
+  confirmationCode String?
+  createdAt        DateTime            @default(now())
+  recipient        User                @relation("Transfer_Recipient", fields: [recipientId], references: [id])
+  sender           User                @relation("Transfer_Sender", fields: [senderId], references: [id])
+  transactions     WalletTransaction[]
+
+  @@index([senderId, createdAt])
+  @@index([recipientId, createdAt])
+}
+
+model AdminActionAudit {
+  id           String   @id @default(cuid())
+  adminId      String
+  action       String
+  targetUserId String?
+  details      Json?
+  createdAt    DateTime @default(now())
+  admin        User     @relation("AdminAction_Admin", fields: [adminId], references: [id])
+  targetUser   User?    @relation("AdminAction_TargetUser", fields: [targetUserId], references: [id])
+
+  @@index([adminId, createdAt])
+}
+
+model UserReport {
+  id             String                @id @default(cuid())
+  reporterId     String
+  reportedUserId String
+  reason         ReportReason
+  details        String?
+  status         ReportStatus          @default(PENDING)
+  adminAction    UserReportAdminAction?
+  reviewedBy     String?
+  reviewedAt     DateTime?
+  adminNote      String?
+  suspendUntil   DateTime?
+  createdAt      DateTime              @default(now())
+  updatedAt      DateTime              @updatedAt
+  reporter       User                  @relation("UserReport_Reporter", fields: [reporterId], references: [id], onDelete: Cascade)
+  reportedUser   User                  @relation("UserReport_ReportedUser", fields: [reportedUserId], references: [id], onDelete: Cascade)
+
+  @@index([reportedUserId])
+  @@index([reporterId])
+  @@index([status])
+  @@index([createdAt])
+}
+
+model UserAppeal {
+  id          String       @id @default(cuid())
+  userId      String
+  reportId    String?
+  reason      String
+  status      AppealStatus @default(PENDING)
+  reviewedBy  String?
+  reviewedAt  DateTime?
+  adminNote   String?
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([status])
+  @@index([createdAt])
+}
+
+model SupportTicket {
+  id              String                  @id @default(cuid())
+  userId          String
+  type            SupportTicketType       @default(SUPPORT)
+  subject         String
+  description     String
+  category        String
+  status          SupportTicketStatus     @default(OPEN)
+  priority        SupportTicketPriority   @default(MEDIUM)
+  assignedAdminId String?
+  metadata        Json?
+  createdAt       DateTime                @default(now())
+  updatedAt       DateTime                @updatedAt
+  user            User                    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  assignedAdmin   User?                   @relation("SupportTicket_AssignedAdmin", fields: [assignedAdminId], references: [id])
+  messages        SupportTicketMessage[]
+
+  @@index([userId, createdAt])
+  @@index([status, createdAt])
+  @@index([type, status])
+}
+
+model SupportTicketMessage {
+  id         String        @id @default(cuid())
+  ticketId   String
+  senderId   String?
+  content    String
+  isFromUser Boolean       @default(false)
+  senderName String?
+  createdAt  DateTime      @default(now())
+  ticket     SupportTicket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+
+  @@index([ticketId, createdAt])
+}
+
+model SupportChatSession {
+  id              String                   @id @default(cuid())
+  userId          String
+  status          SupportChatSessionStatus @default(BOT)
+  assignedAdminId String?
+  createdAt       DateTime                 @default(now())
+  updatedAt       DateTime                 @updatedAt
+  user            User                     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  assignedAdmin   User?                    @relation("SupportChatSession_AssignedAdmin", fields: [assignedAdminId], references: [id])
+  messages        SupportChatMessage[]
+
+  @@index([userId, updatedAt])
+  @@index([status, updatedAt])
+}
+
+model SupportChatMessage {
+  id         String             @id @default(cuid())
+  sessionId  String
+  senderId   String?
+  content    String
+  isFromUser Boolean            @default(false)
+  isBot      Boolean            @default(false)
+  senderName String?
+  createdAt  DateTime           @default(now())
+  session    SupportChatSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@index([sessionId, createdAt])
+}
+
+model WebhookEvent {
+  id         String   @id @default(cuid())
+  gateway    String
+  reference  String
+  rawPayload Json
+  verified   Boolean  @default(false)
+  processed  Boolean  @default(false)
+  createdAt  DateTime @default(now())
+
+  @@unique([gateway, reference])
+  @@index([processed, createdAt])
+}
+
+model AppSetting {
+  key       String   @id
+  value     String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+/// Interpret queries kept without a user id. Rows older than 30 days are deleted on write.
+model AiIntentQueryLog {
+  id               String   @id @default(cuid())
+  query            String
+  source           String
+  cohort           String   @default("rules")
+  cached           Boolean  @default(false)
+  latencyMs        Int
+  confidence       Float
+  fallbackReason   String?
+  promptTokens     Int?
+  completionTokens Int?
+  createdAt        DateTime @default(now())
+
+  @@index([createdAt])
+}
+
+/// Shown, tap, fallback, and conversion counts for the AI vs rules cohort.
+/// No user id and no listing id. Rows older than 30 days are deleted on write.
+model AiIntentEvent {
+  id        String   @id @default(cuid())
+  event     String
+  cohort    String
+  module    String?
+  /// hero, standard, or compact. Set on slot taps.
+  size      String?
+  reason    String?
+  kind      String?
+  cached    Boolean  @default(false)
+  latencyMs Int?
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([cohort, event])
+}
+
+model TradeOffer {
+  id              String       @id @default(cuid())
+  tradeId         String
+  bidderId        String
+  amount          Decimal?     @db.Decimal(18, 6)
+  message         String?
+  status          OfferStatus  @default(PENDING)
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+  // Item-for-item trading (Phase 4)
+  offeredTradeId  String? // ID of the trade item being offered in exchange
+  offeredTrade    Trade?       @relation("TradeOffer_OfferedTrade", fields: [offeredTradeId], references: [id])
+  // Counter-offer mechanism (Phase 4, Days 5-6)
+  parentOfferId     String? // ID of the original offer this is a counter-offer to
+  parentOffer       TradeOffer?  @relation("TradeOffer_CounterOffers", fields: [parentOfferId], references: [id])
+  counterOffers     TradeOffer[] @relation("TradeOffer_CounterOffers")
+  // Owner counter: which of bidder's items owner wants (owner picks from counterparty's items)
+  requestedTradeId  String?
+  requestedTrade    Trade?       @relation("TradeOffer_RequestedTrade", fields: [requestedTradeId], references: [id])
+  requestedAmount   Decimal?     @db.Decimal(18, 6) // Additional cash owner wants when countering
+  negotiation     Negotiation?
+  acceptedInTrade Trade?       @relation("Trade_AcceptedOffer")
+  bidder          User         @relation("TradeOffer_Bidder", fields: [bidderId], references: [id])
+  trade           Trade        @relation("Trade_Offers", fields: [tradeId], references: [id])
+
+  @@index([offeredTradeId])
+  @@index([parentOfferId])
+  @@index([requestedTradeId])
+}
+
+model Negotiation {
+  id        String               @id @default(cuid())
+  tradeId   String
+  offerId   String               @unique
+  ownerId   String
+  bidderId  String
+  createdAt DateTime             @default(now())
+  bidder    User                 @relation("Negotiation_Bidder", fields: [bidderId], references: [id])
+  offer     TradeOffer           @relation(fields: [offerId], references: [id])
+  owner     User                 @relation("Negotiation_Owner", fields: [ownerId], references: [id])
+  trade     Trade                @relation(fields: [tradeId], references: [id])
+  messages  NegotiationMessage[]
+}
+
+model NegotiationMessage {
+  id            String      @id @default(cuid())
+  negotiationId String
+  senderId      String
+  content       String
+  createdAt     DateTime    @default(now())
+  messageType   MessageType @default(REGULAR)
+  proposalData  Json?
+  negotiation   Negotiation @relation(fields: [negotiationId], references: [id])
+  sender        User        @relation(fields: [senderId], references: [id])
+}
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  userId    String?
+  type      String
+  ip        String?
+  ua        String?
+  createdAt DateTime @default(now())
+  user      User?    @relation(fields: [userId], references: [id])
+}
+
+model EmailVerificationToken {
+  id        String    @id @default(cuid())
+  userId    String
+  token     String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+  user      User      @relation(fields: [userId], references: [id])
+}
+
+model PasswordResetToken {
+  id        String    @id @default(cuid())
+  userId    String
+  token     String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+  user      User      @relation(fields: [userId], references: [id])
+}
+
+model WalletPinResetToken {
+  id        String    @id @default(cuid())
+  userId    String
+  token     String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+  user      User      @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+}
+
+model MediaAsset {
+  id        String   @id @default(cuid())
+  key       String   @unique
+  ownerId   String
+  domain    String
+  phash     String?
+  width     Int?
+  height    Int?
+  createdAt DateTime @default(now())
+
+  owner     User @relation(fields: [ownerId], references: [id])
+
+  @@index([ownerId, domain])
+  @@index([domain])
+}
+
+model VerificationDocument {
+  id              String    @id @default(cuid())
+  userId          String
+  type            String
+  documentKey     String
+  fileName        String
+  fileSize        Int?
+  uploadedAt      DateTime  @default(now())
+  status          String    @default("PENDING")
+  reviewedAt      DateTime?
+  reviewedBy      String?
+  rejectionReason String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  user            User      @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@index([type])
+  @@index([status])
+}
+
+model Account {
+  id            String              @id @default(cuid())
+  userId        String              @unique
+  balance       Decimal             @default(0) @db.Decimal(18, 6)
+  lockedBalance Decimal             @default(0) @db.Decimal(18, 6)
+  createdAt     DateTime            @default(now())
+  updatedAt     DateTime            @updatedAt
+  user          User                @relation(fields: [userId], references: [id])
+  transactions  WalletTransaction[]
+}
+
+// Week 3: Wallet Security Model
+model WalletSecurity {
+  id                      String    @id @default(cuid())
+  userId                  String    @unique
+  walletLocked            Boolean   @default(false)
+  lockReason              String?
+  lockedAt                DateTime?
+  lockedBy                String? // User ID or 'system'
+  unlockToken             String? // Temporary unlock token
+  unlockTokenExpiresAt    DateTime?
+  dailyLimit              Decimal?  @db.Decimal(18, 6) // User-specific daily limit
+  monthlyLimit            Decimal?  @db.Decimal(18, 6) // User-specific monthly limit
+  perTransactionLimit     Decimal?  @db.Decimal(18, 6) // Per-transaction limit
+  suspiciousActivityCount Int       @default(0)
+  lastSuspiciousActivity  DateTime?
+  createdAt               DateTime  @default(now())
+  updatedAt               DateTime  @updatedAt
+  user                    User      @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+}
+
+// Week 3: Ad Schedule Model
+enum AdMediaType {
+  IMAGE
+  VIDEO
+}
+
+model AdSchedule {
+  id             String            @id @default(cuid())
+  userId         String
+  transactionId  String            @unique // Links to WalletTransaction
+  title          String
+  description    String?
+  mediaType      AdMediaType       @default(IMAGE)
+  mediaKeys      String[]
+  videoKey       String?
+  placementKey   String?
+  /// All feed surfaces where this creative runs (first key mirrors placementKey).
+  placementKeys  String[]          @default([])
+  /// External link opened when users tap the ad (http/https).
+  destinationUrl String?
+  scheduledStart DateTime
+  scheduledEnd   DateTime?
+  status         AdStatus          @default(PENDING_REVIEW)
+  viewCount      Int               @default(0)
+  clickCount     Int               @default(0)
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+  user           User              @relation(fields: [userId], references: [id])
+  transaction    WalletTransaction @relation(fields: [transactionId], references: [id])
+
+  @@index([userId])
+  @@index([scheduledStart])
+}
+
+model AdPlacement {
+  id          String   @id @default(cuid())
+  key         String   @unique
+  title       String
+  description String?
+  priority    Int      @default(0)
+  rules       Json?
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model BoostType {
+  id          String   @id @default(cuid())
+  slug        String   @unique
+  title       String
+  description String?
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  configs     BoostConfig[]
+  purchases   BoostPurchase[]
+}
+
+model BoostConfig {
+  id            String    @id @default(cuid())
+  boostTypeId   String
+  minDays       Int       @default(1)
+  maxDays       Int       @default(30)
+  pricingModel  String    @default("FIXED") // FIXED, DAILY, TIERED
+  baseCostBYC   Decimal?  @db.Decimal(18, 6)
+  dailyCostBYC  Decimal?  @db.Decimal(18, 6)
+  tiers         Json?     // [{ minDays, maxDays, cost }]
+  placementKeys String[]
+  active        Boolean   @default(true)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  boostType     BoostType @relation(fields: [boostTypeId], references: [id])
+}
+
+model BoostPurchase {
+  id           String   @id @default(cuid())
+  userId       String
+  referenceType String
+  referenceId  String
+  boostTypeId  String
+  placementKey String
+  /// ISO dates (YYYY-MM-DD) when boost runs; empty = contiguous window from startsAt–endsAt.
+  boostDates   String[] @default([])
+  days         Int
+  costBYC      Decimal  @db.Decimal(18, 6)
+  /// External link opened when users tap the boosted ad card.
+  destinationUrl String?
+  viewCount    Int      @default(0)
+  clickCount   Int      @default(0)
+  status       String   @default("ACTIVE")
+  startsAt     DateTime @default(now())
+  endsAt       DateTime
+  createdAt    DateTime @default(now())
+
+  user         User     @relation(fields: [userId], references: [id])
+  boostType    BoostType @relation(fields: [boostTypeId], references: [id])
+}
+
+// Week 3: Suspicious Activity Model
+model SuspiciousActivity {
+  id            String    @id @default(cuid())
+  userId        String
+  activityType  String // 'RAPID_TRANSACTIONS', 'LARGE_AMOUNT', 'UNUSUAL_PATTERN', etc.
+  description   String
+  severity      String    @default("MEDIUM") // 'LOW', 'MEDIUM', 'HIGH', 'CRITICAL'
+  transactionId String?
+  autoLocked    Boolean   @default(false)
+  reviewedBy    String?
+  reviewedAt    DateTime?
+  resolved      Boolean   @default(false)
+  createdAt     DateTime  @default(now())
+  user          User      @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@index([severity])
+  @@index([resolved])
+}
+
+model ConversionRate {
+  id           String    @id @default(cuid())
+  base         String    @default("BYC")
+  quote        String    @default("USD")
+  rate         Decimal   @db.Decimal(18, 6)
+  active       Boolean   @default(true)
+  validFrom    DateTime? // Validity window start (null = immediately valid)
+  validTo      DateTime? // Validity window end (null = no expiration)
+  createdBy    String? // Admin user ID who created this rate
+  updatedBy    String? // Admin user ID who last updated this rate
+  changeReason String? // Reason for rate change (for audit trail)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  @@index([base, quote, active])
+  @@index([validFrom, validTo])
+}
+
+model FundingPackage {
+  id              String   @id @default(cuid())
+  name            String
+  description     String?
+  price           Decimal  @db.Decimal(18, 2)
+  currency        String   @default("USD")
+  bonusPercentage Decimal  @db.Decimal(5, 2) @default(0)
+  isPopular       Boolean  @default(false)
+  sortOrder       Int      @default(0)
+  active          Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([active])
+}
+
+model Promotion {
+  id               String              @id @default(cuid())
+  slug             String              @unique
+  title            String
+  type             String
+  amountBYC        Decimal             @db.Decimal(18, 6)
+  active           Boolean             @default(true)
+  startsAt         DateTime?
+  endsAt           DateTime?
+  createdAt        DateTime            @default(now())
+  // Trade application fields (Week 3)
+  appliedToTradeId String?
+  appliedAt        DateTime?
+  activeUntil      DateTime?
+  transactions     WalletTransaction[]
+  appliedTrade     Trade[]             @relation("Trade_ActivePromotion")
+}
+
+model Gift {
+  id                   String          @id @default(cuid())
+  giverId              String
+  title                String
+  description          String?
+  type                 GiftType        @default(RANDOM)
+  category             GiftCategory    @default(OTHERS)
+  status               GiftStatus      @default(ACTIVE)
+  mediaType            ListingMediaType @default(IMAGE)
+  mediaKeys            String[]
+  videoKey             String?
+  thumbnailKey         String?
+  karmaReward          Int             @default(30)
+  maxClaims            Int             @default(1)
+  currentClaims        Int             @default(0)
+  location             String?
+  isLocationRestricted Boolean         @default(false)
+  targetUserId         String?
+  targetCriteria       Json?
+  minimumKarmaLevel    String?
+  tags                 String[]
+  metadata             Json?
+  expiresAt            DateTime?
+  isChainGift          Boolean         @default(false)
+  chainParentId        String?
+  createdAt            DateTime        @default(now())
+  updatedAt            DateTime        @updatedAt
+  giver                User            @relation(fields: [giverId], references: [id])
+  targetUser           User?           @relation("Gift_TargetUser", fields: [targetUserId], references: [id])
+  chainParent          Gift?           @relation("GiftChain", fields: [chainParentId], references: [id], onDelete: SetNull)
+  chainChildren        Gift[]          @relation("GiftChain")
+  claims               GiftClaim[]
+  comments             GiftComment[]
+  likes                GiftLike[]
+  requests             GiftRequest[]
+  linkedPosts          CommunityPost[] @relation("PostLinkedGift")
+  adminModerationAction ListingModerationAction?
+  adminModerationReason String?
+  adminModeratedAt      DateTime?
+  adminModeratedById    String?
+  adminModeratedBy      User?           @relation("Gift_AdminModerator", fields: [adminModeratedById], references: [id])
+}
+
+model GiftClaim {
+  id            String     @id @default(cuid())
+  giftId        String
+  claimerId     String
+  code          String     @unique
+  status        GiftStatus @default(CLAIMED)
+  claimedAt     DateTime   @default(now())
+  completedAt   DateTime?
+  karmaAwarded  Int        @default(0)
+  notes         String?
+  rating        Int?
+  reviewComment String?
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+  claimer       User       @relation(fields: [claimerId], references: [id])
+  gift          Gift       @relation(fields: [giftId], references: [id])
+}
+
+model GiftRequest {
+  id              String            @id @default(cuid())
+  giftId          String
+  requesterId     String
+  message         String?
+  status          GiftRequestStatus @default(PENDING)
+  createdAt       DateTime          @default(now())
+  respondedAt     DateTime?
+  responseMessage String?
+  declineReason   String?
+  updatedAt       DateTime          @updatedAt
+  gift            Gift              @relation(fields: [giftId], references: [id])
+  requester       User              @relation("GiftRequest_Requester", fields: [requesterId], references: [id])
+
+  @@index([giftId])
+  @@index([requesterId])
+  @@index([status])
+}
+
+model GiftClaimBlock {
+  id           String   @id @default(cuid())
+  giftId       String
+  userId       String
+  blockedUntil DateTime
+  reason       String?
+  createdAt    DateTime @default(now())
+  user         User     @relation("GiftClaimBlocks", fields: [userId], references: [id])
+
+  @@unique([giftId, userId])
+  @@index([userId])
+  @@index([blockedUntil])
+}
+
+model Campaign {
+  id               String           @id @default(cuid())
+  founderId        String
+  title            String
+  description      String?
+  shortDescription String?
+  status           CampaignStatus   @default(DRAFT)
+  category         String?
+  goalAmount       Decimal          @db.Decimal(18, 6)
+  currentAmount    Decimal          @default(0) @db.Decimal(18, 6)
+  currency         String           @default("BYC")
+  mediaType        ListingMediaType @default(IMAGE)
+  mediaKeys        String[]
+  videoKey         String?
+  thumbnailKey     String?
+  tags             String[]
+  location         String?
+  isUrgent         Boolean          @default(false)
+  isFeatured       Boolean          @default(false)
+  isVerified       Boolean          @default(false)
+  minimumDonation  Decimal?         @db.Decimal(18, 6)
+  donorCount       Int              @default(0)
+  shareCount       Int              @default(0)
+  viewCount        Int              @default(0)
+  metadata         Json?
+  launchedAt       DateTime?
+  endsAt           DateTime?
+  completedAt      DateTime?
+  pausedAt         DateTime?
+  cancelledAt      DateTime?
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+  founder          User             @relation(fields: [founderId], references: [id])
+  updates          CampaignUpdate[]
+  donations        Donation[]
+  rewardTiers      RewardTier[]
+  linkedPosts      CommunityPost[]  @relation("PostLinkedCampaign")
+  comments        CampaignComment[]
+  adminModerationAction ListingModerationAction?
+  adminModerationReason String?
+  adminModeratedAt      DateTime?
+  adminModeratedById    String?
+  adminModeratedBy      User?            @relation("Campaign_AdminModerator", fields: [adminModeratedById], references: [id])
+}
+
+model Donation {
+  id              String           @id @default(cuid())
+  campaignId      String
+  donorId         String
+  amount          Decimal          @db.Decimal(18, 6)
+  currency        String           @default("BYC")
+  isAnonymous     Boolean          @default(false)
+  message         String?
+  karmaAwarded    Int              @default(0)
+  transactionHash String?
+  status          TxStatus         @default(PENDING)
+  processedAt     DateTime?
+  refundedAt      DateTime?
+  metadata        Json?
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  campaign        Campaign         @relation(fields: [campaignId], references: [id])
+  donor           User             @relation(fields: [donorId], references: [id])
+  rewards         DonationReward[]
+}
+
+model CampaignUpdate {
+  id         String             @id @default(cuid())
+  campaignId String
+  authorId   String
+  type       CampaignUpdateType @default(TEXT)
+  content    String?
+  mediaKeys  String[]
+  createdAt  DateTime           @default(now())
+  updatedAt  DateTime           @updatedAt
+  author     User               @relation(fields: [authorId], references: [id])
+  campaign   Campaign           @relation(fields: [campaignId], references: [id])
+}
+
+model RewardTier {
+  id              String           @id @default(cuid())
+  campaignId      String
+  title           String
+  description     String?
+  minimumDonation Decimal          @db.Decimal(18, 6)
+  limitedQuantity Int?
+  claimedCount    Int              @default(0)
+  status          RewardTierStatus @default(AVAILABLE)
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  rewards         DonationReward[]
+  campaign        Campaign         @relation(fields: [campaignId], references: [id])
+}
+
+model DonationReward {
+  id           String     @id @default(cuid())
+  donationId   String
+  rewardTierId String
+  createdAt    DateTime   @default(now())
+  donation     Donation   @relation(fields: [donationId], references: [id])
+  rewardTier   RewardTier @relation(fields: [rewardTierId], references: [id])
+
+  @@unique([donationId, rewardTierId])
+}
+
+model Community {
+  id               String              @id @default(cuid())
+  name             String
+  description      String?
+  shortDescription String?
+  category         CommunityCategory   @default(GENERAL)
+  type             CommunityType       @default(PUBLIC)
+  status           CommunityStatus     @default(ACTIVE)
+  visibility       CommunityVisibility @default(OPEN)
+  requiresApproval Boolean             @default(false)
+  createdById      String
+  mediaKeys        String[]
+  avatarKey        String?
+  bannerKey        String?
+  imageUrl         String?
+  tags             String[]
+  rules            String?
+  location         String?
+  center_latitude  Float?
+  center_longitude Float?
+  memberCount      Int                 @default(0)
+  postCount        Int                 @default(0)
+  eventCount       Int                 @default(0)
+  rating           Float?
+  metadata         Json?
+  settings         Json? // Community settings JSON
+  impactTracker    Json? // Impact metrics JSON { postsCreated, problemsSolved, eventsOrganized, membersHelped }
+  isVerified       Boolean             @default(false)
+  isFeatured       Boolean             @default(false)
+  createdAt        DateTime            @default(now())
+  updatedAt        DateTime            @updatedAt
+  createdBy        User                @relation(fields: [createdById], references: [id])
+  events           CommunityEvent[]
+  members          CommunityMember[]
+  posts            CommunityPost[]
+  invites          CommunityInvite[]
+  goals            CommunityGoal[]
+
+  @@index([createdById])
+  @@index([category])
+  @@index([type])
+  @@index([status])
+  @@index([visibility])
+  @@index([center_latitude, center_longitude])
+}
+
+model CommunityMember {
+  id                    String        @id @default(cuid())
+  communityId           String
+  userId                String
+  role                  CommunityRole @default(MEMBER)
+  status                MemberStatus  @default(ACTIVE)
+  expertLevel           ExpertLevel   @default(NEWCOMER)
+  contributionScore     Int           @default(0)
+  helpfulAnswers        Int           @default(0)
+  responsivenessScore   Float         @default(0.0)
+  specializations       String[] // Array of specialization tags
+  badges                Json? // Array of badge objects [{id, name, description, iconUrl, earnedAt}]
+  joinedAt              DateTime      @default(now())
+  leftAt                DateTime?
+  bannedAt              DateTime?
+  banReason             String?
+  invitedBy             String?
+  metadata              Json?
+  recentKarmaActivities Json? // Recent karma activities JSON
+  createdAt             DateTime      @default(now())
+  updatedAt             DateTime      @updatedAt
+  community             Community     @relation(fields: [communityId], references: [id])
+  inviter               User?         @relation("CommunityMember_Inviter", fields: [invitedBy], references: [id])
+  user                  User          @relation(fields: [userId], references: [id])
+
+  @@unique([communityId, userId])
+  @@index([communityId])
+  @@index([userId])
+  @@index([role])
+  @@index([status])
+  @@index([expertLevel])
+}
+
+model CommunityInvite {
+  id             String                @id @default(cuid())
+  communityId    String
+  inviterId      String
+  inviteeUserId  String?
+  inviteeEmail   String?
+  inviteCode     String                @unique
+  message        String?
+  expiresAt      DateTime?
+  status         CommunityInviteStatus @default(PENDING)
+  acceptedAt     DateTime?
+  createdAt      DateTime              @default(now())
+  updatedAt      DateTime              @updatedAt
+  community      Community             @relation(fields: [communityId], references: [id])
+  inviter        User                  @relation("CommunityInvite_Inviter", fields: [inviterId], references: [id])
+  invitee        User?                 @relation("CommunityInvite_Invitee", fields: [inviteeUserId], references: [id])
+
+  @@index([communityId])
+  @@index([inviteeUserId])
+  @@index([inviteeEmail])
+  @@index([status])
+}
+
+model CommunityPost {
+  id              String     @id @default(cuid())
+  communityId     String
+  authorId        String
+  title           String?
+  content         String
+  type            PostType   @default(TEXT)
+  mediaKeys       String[]
+  videoUrl        String? // Video URL for video posts
+  location        String? // Location tag for posts
+  tags            String[]
+  status          PostStatus @default(ACTIVE)
+  isPinned        Boolean    @default(false)
+  isAnnouncement  Boolean    @default(false)
+  likeCount       Int        @default(0)
+  commentCount    Int        @default(0)
+  shareCount      Int        @default(0)
+  metadata        Json?
+  pollDetails     Json? // Poll details JSON (for POLL type posts)
+  eventDetails    Json? // Event details JSON (for EVENT type posts, links to CommunityEvent)
+  resourceDetails Json? // Resource details JSON (for RESOURCE type posts)
+  createdAt       DateTime   @default(now())
+  updatedAt       DateTime   @updatedAt
+
+  // Offer/Ask flow fields
+  intentType       IntentType?    @default(NONE)
+  intentSubType    IntentSubType? @default(NONE)
+  linkedTradeId    String?
+  linkedGiftId     String?
+  linkedCampaignId String?
+  linkedEventId    String? // Link to CommunityEvent for event posts
+
+  author         User                   @relation(fields: [authorId], references: [id])
+  community      Community              @relation(fields: [communityId], references: [id])
+  linkedTrade    Trade?                 @relation("PostLinkedTrade", fields: [linkedTradeId], references: [id])
+  linkedGift     Gift?                  @relation("PostLinkedGift", fields: [linkedGiftId], references: [id])
+  linkedCampaign Campaign?              @relation("PostLinkedCampaign", fields: [linkedCampaignId], references: [id])
+  linkedEvent    CommunityEvent?        @relation("PostLinkedEvent", fields: [linkedEventId], references: [id])
+  comments       CommunityPostComment[]
+  likes          CommunityPostLike[]
+  poll           CommunityPoll?
+  pollVotes      CommunityPollVote[]
+  reports        CommunityPostReport[]
+
+  @@index([communityId, createdAt])
+  @@index([authorId])
+  @@index([type])
+  @@index([status])
+  @@index([isPinned])
+  @@index([isAnnouncement])
+  @@index([intentType])
+  @@index([intentSubType])
+  @@index([linkedTradeId])
+  @@index([linkedGiftId])
+  @@index([linkedCampaignId])
+  @@index([linkedEventId])
+}
+
+model CommunityPostLike {
+  id        String        @id @default(cuid())
+  postId    String
+  userId    String
+  createdAt DateTime      @default(now())
+  post      CommunityPost @relation(fields: [postId], references: [id])
+  user      User          @relation(fields: [userId], references: [id])
+
+  @@unique([postId, userId])
+}
+
+model CommunityPostComment {
+  id        String                     @id @default(cuid())
+  postId    String
+  authorId  String
+  content   String
+  parentId  String?
+  status    PostStatus                 @default(ACTIVE)
+  likeCount Int                        @default(0)
+  createdAt DateTime                   @default(now())
+  updatedAt DateTime                   @updatedAt
+  author    User                       @relation(fields: [authorId], references: [id])
+  parent    CommunityPostComment?      @relation("CommentReplies", fields: [parentId], references: [id])
+  replies   CommunityPostComment[]     @relation("CommentReplies")
+  post      CommunityPost              @relation(fields: [postId], references: [id])
+  likes     CommunityPostCommentLike[]
+  reports   CommunityPostReport[]
+
+  @@index([postId, createdAt])
+  @@index([authorId])
+  @@index([parentId])
+  @@index([status])
+}
+
+model CommunityEvent {
+  id                   String                   @id @default(cuid())
+  communityId          String
+  organizerId          String
+  title                String
+  description          String?
+  type                 EventType                @default(MEETUP)
+  status               EventStatus              @default(UPCOMING)
+  location             String?
+  isOnline             Boolean                  @default(false)
+  onlineLink           String? // Virtual event link
+  mediaKeys            String[]
+  maxAttendees         Int?
+  attendeeCount        Int                      @default(0)
+  price                Decimal?                 @db.Decimal(18, 6)
+  currency             String?                  @default("BYC")
+  tags                 String[]
+  metadata             Json?
+  additionalInfo       Json? // Additional event information JSON
+  startDate            DateTime
+  endDate              DateTime
+  registrationDeadline DateTime?
+  createdAt            DateTime                 @default(now())
+  updatedAt            DateTime                 @updatedAt
+  community            Community                @relation(fields: [communityId], references: [id])
+  organizer            User                     @relation(fields: [organizerId], references: [id])
+  attendees            CommunityEventAttendee[]
+  linkedPosts          CommunityPost[]          @relation("PostLinkedEvent")
+
+  @@index([communityId, startDate])
+  @@index([organizerId])
+  @@index([status])
+  @@index([startDate])
+}
+
+model CommunityEventAttendee {
+  id           String         @id @default(cuid())
+  eventId      String
+  userId       String
+  status       AttendeeStatus @default(REGISTERED)
+  registeredAt DateTime       @default(now())
+  checkedInAt  DateTime?
+  metadata     Json?
+  event        CommunityEvent @relation(fields: [eventId], references: [id])
+  user         User           @relation(fields: [userId], references: [id])
+
+  @@unique([eventId, userId])
+  @@index([eventId])
+  @@index([userId])
+  @@index([status])
+}
+
+// Community Goal Model
+model CommunityGoal {
+  id          String    @id @default(cuid())
+  communityId String
+  title       String
+  description String?
+  targetDate  DateTime?
+  isCompleted Boolean   @default(false)
+  completedAt DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  community   Community @relation(fields: [communityId], references: [id], onDelete: Cascade)
+
+  @@index([communityId])
+  @@index([isCompleted])
+}
+
+// Community Poll Models
+model CommunityPoll {
+  id                 String                @id @default(cuid())
+  postId             String                @unique
+  question           String
+  status             PollStatus            @default(ACTIVE)
+  closesAt           DateTime?
+  allowMultipleVotes Boolean               @default(false)
+  createdAt          DateTime              @default(now())
+  updatedAt          DateTime              @updatedAt
+  post               CommunityPost         @relation(fields: [postId], references: [id], onDelete: Cascade)
+  options            CommunityPollOption[]
+  votes              CommunityPollVote[]
+
+  @@index([postId])
+  @@index([status])
+}
+
+model CommunityPollOption {
+  id                String              @id @default(cuid())
+  pollId            String
+  text              String
+  voteCount         Int                 @default(0)
+  createdAt         DateTime            @default(now())
+  poll              CommunityPoll       @relation(fields: [pollId], references: [id], onDelete: Cascade)
+  CommunityPollVote CommunityPollVote[]
+
+  @@index([pollId])
+}
+
+model CommunityPollVote {
+  id              String              @id @default(cuid())
+  postId          String
+  pollId          String
+  optionId        String
+  userId          String
+  votedAt         DateTime            @default(now())
+  post            CommunityPost       @relation(fields: [postId], references: [id], onDelete: Cascade)
+  user            User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  option          CommunityPollOption @relation(fields: [optionId], references: [id], onDelete: Cascade)
+  CommunityPoll   CommunityPoll?      @relation(fields: [communityPollId], references: [id])
+  communityPollId String?
+
+  @@unique([pollId, userId])
+  @@index([postId])
+  @@index([pollId])
+  @@index([userId])
+}
+
+// Community Post Comment Like
+model CommunityPostCommentLike {
+  id        String               @id @default(cuid())
+  commentId String
+  userId    String
+  createdAt DateTime             @default(now())
+  comment   CommunityPostComment @relation(fields: [commentId], references: [id], onDelete: Cascade)
+  user      User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([commentId, userId])
+  @@index([commentId])
+  @@index([userId])
+}
+
+// Community Post Report (for moderation)
+model CommunityPostReport {
+  id          String                @id @default(cuid())
+  postId      String?
+  commentId   String?
+  reporterId  String
+  reason      ReportReason
+  description String?
+  status      ReportStatus          @default(PENDING)
+  reviewedBy  String?
+  reviewedAt  DateTime?
+  adminNote   String?
+  createdAt   DateTime              @default(now())
+  updatedAt   DateTime              @updatedAt
+  post        CommunityPost?        @relation(fields: [postId], references: [id], onDelete: Cascade)
+  comment     CommunityPostComment? @relation(fields: [commentId], references: [id], onDelete: Cascade)
+  reporter    User                  @relation(fields: [reporterId], references: [id], onDelete: Cascade)
+
+  @@index([postId])
+  @@index([commentId])
+  @@index([reporterId])
+  @@index([status])
+  @@index([createdAt])
+}
+
+model KarmaAccount {
+  id                String     @id @default(cuid())
+  userId            String     @unique
+  currentPoints     Int        @default(0)
+  totalPointsEarned Int        @default(0)
+  level             Int        @default(1)
+  trustLevel        TrustLevel @default(NEWCOMER)
+  streak            Int        @default(0)
+  lastActivityAt    DateTime?
+  createdAt         DateTime   @default(now())
+  updatedAt         DateTime   @updatedAt
+  user              User       @relation(fields: [userId], references: [id])
+}
+
+model KarmaEvent {
+  id         String         @id @default(cuid())
+  userId     String
+  type       KarmaEventType
+  points     Int
+  reason     String?
+  metadata   Json?
+  sourceId   String?
+  sourceType String?
+  createdAt  DateTime       @default(now())
+  user       User           @relation(fields: [userId], references: [id])
+}
+
+model Achievement {
+  id               String              @id @default(cuid())
+  slug             String              @unique
+  name             String
+  description      String
+  iconUrl          String?
+  category         AchievementCategory @default(GENERAL)
+  pointsRequired   Int?
+  pointsReward     Int                 @default(0)
+  rarity           AchievementRarity   @default(COMMON)
+  isActive         Boolean             @default(true)
+  unlockCriteria   Json?
+  createdAt        DateTime            @default(now())
+  updatedAt        DateTime            @updatedAt
+  userAchievements UserAchievement[]
+}
+
+model UserAchievement {
+  id            String      @id @default(cuid())
+  userId        String
+  achievementId String
+  unlockedAt    DateTime    @default(now())
+  claimedAt     DateTime?
+  metadata      Json?
+  achievement   Achievement @relation(fields: [achievementId], references: [id])
+  user          User        @relation(fields: [userId], references: [id])
+
+  @@unique([userId, achievementId])
+}
+
+model Notification {
+  id         String               @id @default(cuid())
+  userId     String
+  type       NotificationType
+  title      String
+  message    String
+  data       Json?
+  read       Boolean              @default(false)
+  readAt     DateTime?
+  actionUrl  String?
+  sourceId   String?
+  sourceType String?
+  priority   NotificationPriority @default(NORMAL)
+  expiresAt  DateTime?
+  createdAt  DateTime             @default(now())
+  updatedAt  DateTime             @updatedAt
+  user       User                 @relation(fields: [userId], references: [id])
+
+  @@index([userId, read])
+  @@index([createdAt])
+}
+
+model NotificationSettings {
+  id                String   @id @default(cuid())
+  userId            String   @unique
+  pushEnabled       Boolean  @default(true)
+  emailEnabled      Boolean  @default(true)
+  typeSettings      Json?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  user              User     @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+}
+
+model EmailPreference {
+  id           String   @id @default(cuid())
+  userId       String   @unique
+  transactional Boolean @default(true)
+  marketing    Boolean @default(true)
+  digest       Boolean @default(true)
+  weeklyReport Boolean @default(false) // Opt-in only; no auto weekly emails unless user enables
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  user         User     @relation(fields: [userId], references: [id])
+}
+
+model EmailLog {
+  id             String   @id @default(cuid())
+  eventName      String
+  recipientEmail String
+  recipientUserId String?
+  category       String?
+  templateId     String?
+  provider       String?
+  status         String   @default("QUEUED")
+  error          String?
+  metadata       Json?
+  createdAt      DateTime @default(now())
+  sentAt         DateTime?
+  user           User?    @relation(fields: [recipientUserId], references: [id])
+
+  @@index([recipientUserId])
+  @@index([eventName])
+  @@index([status])
+}
+
+model UserDeviceToken {
+  id         String        @id @default(cuid())
+  userId     String
+  token      String        @unique
+  deviceType DeviceType
+  lastUsedAt DateTime?
+  createdAt  DateTime      @default(now())
+  updatedAt  DateTime      @updatedAt
+  user       User          @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+}
+
+model NotificationTemplate {
+  id        String           @id @default(cuid())
+  type      NotificationType @unique
+  title     String
+  message   String
+  isActive  Boolean          @default(true)
+  metadata  Json?
+  createdAt DateTime         @default(now())
+  updatedAt DateTime         @updatedAt
+}
+
+model BroadcastNotification {
+  id             String          @id @default(cuid())
+  title          String
+  message        String
+  targetCriteria Json?
+  scheduledAt    DateTime?
+  sentAt         DateTime?
+  recipientCount Int             @default(0)
+  deliveredCount Int             @default(0)
+  readCount      Int             @default(0)
+  status         BroadcastStatus @default(DRAFT)
+  createdBy      String
+  metadata       Json?
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+}
+
+model Conversation {
+  id            String                    @id @default(cuid())
+  type          ConversationType          @default(DIRECT)
+  title         String?
+  description   String?
+  isActive      Boolean                   @default(true)
+  lastMessageAt DateTime?
+  lastMessage   String?
+  lastMessageBy String?
+  metadata      Json?
+  createdAt     DateTime                  @default(now())
+  updatedAt     DateTime                  @updatedAt
+  participants  ConversationParticipant[]
+  messages      Message[]
+
+  @@index([type])
+  @@index([isActive])
+  @@index([lastMessageAt])
+}
+
+model ConversationParticipant {
+  id                String          @id @default(cuid())
+  conversationId    String
+  userId            String
+  role              ParticipantRole @default(MEMBER)
+  joinedAt          DateTime        @default(now())
+  leftAt            DateTime?
+  lastReadAt        DateTime?
+  lastReadMessageId String?
+  isMuted           Boolean         @default(false)
+  isPinned          Boolean         @default(false)
+  metadata          Json?
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+  conversation      Conversation    @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  lastReadMessage   Message?        @relation("LastReadMessage", fields: [lastReadMessageId], references: [id])
+  user              User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([conversationId, userId])
+  @@index([userId])
+  @@index([conversationId])
+}
+
+model Message {
+  id             String                    @id @default(cuid())
+  conversationId String
+  senderId       String
+  content        String
+  type           ChatMessageType           @default(TEXT)
+  status         MessageStatus             @default(SENT)
+  replyToId      String?
+  editedAt       DateTime?
+  deletedAt      DateTime?
+  metadata       Json?
+  createdAt      DateTime                  @default(now())
+  updatedAt      DateTime                  @updatedAt
+  deletedBy      String?
+  readBy         ConversationParticipant[] @relation("LastReadMessage")
+  conversation   Conversation              @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  replyTo        Message?                  @relation("MessageReplies", fields: [replyToId], references: [id])
+  replies        Message[]                 @relation("MessageReplies")
+  sender         User                      @relation(fields: [senderId], references: [id], onDelete: Cascade)
+  reactions      MessageReaction[]
+  reports        MessageReport[]
+
+  @@index([conversationId, createdAt])
+  @@index([senderId])
+  @@index([type])
+  @@index([status])
+}
+
+model MessageReaction {
+  id        String   @id @default(cuid())
+  messageId String
+  userId    String
+  emoji     String
+  createdAt DateTime @default(now())
+  message   Message  @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([messageId, userId, emoji])
+}
+
+model MessageReport {
+  id          String       @id @default(cuid())
+  messageId   String
+  reporterId  String
+  reason      ReportReason
+  description String?
+  status      ReportStatus @default(PENDING)
+  reviewedBy  String?
+  reviewedAt  DateTime?
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  adminNote   String?
+  message     Message      @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  reporter    User         @relation(fields: [reporterId], references: [id], onDelete: Cascade)
+
+  @@unique([messageId, reporterId])
+}
+
+model PaymentGatewayConfig {
+  id            String      @id @default(cuid())
+  gateway       GatewayName
+  mode          PaymentMode
+  publicKey     String
+  secretKey     String
+  webhookUrl    String?
+  webhookSecret String?
+  currencies    String?
+  active        Boolean     @default(true)
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+  secretKeyEnc  String?
+
+  @@unique([gateway, mode])
+}
+
+model GiftComment {
+  id        String        @id @default(cuid())
+  giftId    String
+  authorId  String
+  content   String
+  likes     Int           @default(0)
+  parentId  String?
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+  author    User          @relation(fields: [authorId], references: [id])
+  gift      Gift          @relation(fields: [giftId], references: [id])
+  parent    GiftComment?  @relation("CommentReplies", fields: [parentId], references: [id])
+  replies   GiftComment[] @relation("CommentReplies")
+
+  @@index([giftId])
+  @@index([authorId])
+  @@index([parentId])
+}
+
+model TradeComment {
+  id        String   @id @default(cuid())
+  tradeId   String
+  authorId  String
+  content   String
+  parentId  String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  author    User     @relation(fields: [authorId], references: [id])
+  trade     Trade    @relation(fields: [tradeId], references: [id], onDelete: Cascade)
+  parent    TradeComment?  @relation("TradeCommentReplies", fields: [parentId], references: [id], onDelete: Cascade)
+  replies   TradeComment[] @relation("TradeCommentReplies")
+
+  @@index([tradeId])
+  @@index([authorId])
+  @@index([parentId])
+}
+
+model CampaignComment {
+  id         String    @id @default(cuid())
+  campaignId String
+  authorId   String
+  content    String
+  parentId   String?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+  author     User      @relation(fields: [authorId], references: [id])
+  campaign   Campaign  @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  parent     CampaignComment?  @relation("CampaignCommentReplies", fields: [parentId], references: [id], onDelete: Cascade)
+  replies    CampaignComment[] @relation("CampaignCommentReplies")
+
+  @@index([campaignId])
+  @@index([authorId])
+  @@index([parentId])
+}
+
+model GiftLike {
+  id        String   @id @default(cuid())
+  giftId    String
+  userId    String
+  createdAt DateTime @default(now())
+  gift      Gift     @relation(fields: [giftId], references: [id])
+  user      User     @relation(fields: [userId], references: [id])
+
+  @@unique([giftId, userId])
+  @@index([giftId])
+  @@index([userId])
+}
+
+enum KycStatus {
+  NOT_VERIFIED
+  PENDING
+  VERIFIED
+  REJECTED
+}
+
+enum TradeCategory {
+  ELECTRONICS
+  BOOKS
+  CLOTHING
+  FASHION
+  HOME_GARDEN
+  SPORTS
+  TOOLS
+  AUTOMOTIVE
+  COLLECTIBLES
+  OTHERS
+}
+
+enum FundingIntentStatus {
+  PENDING
+  SUCCEEDED
+  FAILED
+  CANCELLED
+}
+
+enum GiftRequestStatus {
+  PENDING
+  APPROVED
+  DECLINED
+  EXPIRED
+}
+
+enum Role {
+  USER
+  MODERATOR
+  ADMIN
+}
+
+enum TradeStatus {
+  DRAFT
+  OPEN
+  IN_OFFER
+  CLOSED
+  CANCELLED
+  PAUSED
+  BANNED
+}
+
+enum TransactionType {
+  FUND
+  SEND
+  RECEIVE
+  PROMOTION
+  DONATION
+  ADVERT
+  WITHDRAWAL
+  REFUND
+  BONUS
+  CASHBACK
+  REFERRAL_BONUS
+  ESCROW_LOCK
+  ESCROW_RELEASE
+}
+
+enum TxStatus {
+  PENDING
+  SUCCESS
+  FAILED
+}
+
+enum WithdrawalStatus {
+  PENDING
+  COMPLETED
+  REJECTED
+  FAILED
+  CANCELLED
+}
+
+enum OfferStatus {
+  PENDING
+  ACCEPTED
+  ACCEPTED_AWAITING_FINALIZATION
+  FINALIZED
+  REJECTED
+  WITHDRAWN
+}
+
+enum MessageType {
+  REGULAR
+  PROPOSAL
+  COUNTER_OFFER
+  ACCEPTANCE
+  DECLINE
+  MEETING_SUGGESTION
+  DISPUTE_REPORT
+  SCHEDULE_SUGGESTION
+}
+
+enum GiftStatus {
+  ACTIVE
+  CLAIMED
+  EXPIRED
+  CANCELLED
+  PAUSED
+  BANNED
+}
+
+enum GiftType {
+  RANDOM
+  TARGETED
+  SKILL
+  EXPERIENCE
+  DIGITAL
+}
+
+enum GiftCategory {
+  ELECTRONICS
+  FOOD
+  BOOKS
+  CLOTHING
+  SERVICES
+  HEALTH
+  EDUCATION
+  TRAVEL
+  ARTS
+  SPORTS
+  TECHNOLOGY
+  OTHERS
+}
+
+enum CampaignStatus {
+  DRAFT
+  ACTIVE
+  PAUSED
+  COMPLETED
+  CANCELLED
+  BANNED
+}
+
+enum ListingModerationAction {
+  PAUSE
+  BAN
+  RESTORE
+}
+
+enum AdStatus {
+  PENDING_REVIEW
+  SCHEDULED
+  ACTIVE
+  PAUSED
+  REJECTED
+  EXPIRED
+  CANCELLED
+}
+
+enum CampaignUpdateType {
+  TEXT
+  IMAGE
+  MILESTONE
+  THANKYOU
+}
+
+enum RewardTierStatus {
+  AVAILABLE
+  SOLD_OUT
+  ARCHIVED
+}
+
+enum CommunityCategory {
+  GENERAL
+  TECHNOLOGY
+  BUSINESS
+  ARTS
+  SPORTS
+  EDUCATION
+  HEALTH
+  TRAVEL
+  FOOD
+  GAMING
+  MUSIC
+  BOOKS
+  SCIENCE
+  SOCIAL_IMPACT
+  ENVIRONMENT
+  OTHERS
+}
+
+enum CommunityType {
+  PUBLIC
+  PRIVATE
+  REGIONAL
+  INTEREST_BASED
+  SKILL_SHARING
+  IMPACT_FOCUSED
+  INVITE_ONLY
+}
+
+enum CommunityVisibility {
+  OPEN
+  CLOSED
+  SECRET
+}
+
+enum ExpertLevel {
+  NEWCOMER
+  CONTRIBUTOR
+  SPECIALIST
+  EXPERT
+  AUTHORITY
+}
+
+enum CommunityStatus {
+  ACTIVE
+  INACTIVE
+  SUSPENDED
+  ARCHIVED
+}
+
+enum CommunityRole {
+  OWNER
+  ADMIN
+  MODERATOR
+  MEMBER
+}
+
+enum MemberStatus {
+  PENDING
+  ACTIVE
+  INACTIVE
+  BANNED
+  LEFT
+  REJECTED
+}
+
+enum CommunityInviteStatus {
+  PENDING
+  ACCEPTED
+  REVOKED
+  EXPIRED
+  DECLINED
+}
+
+enum PostType {
+  TEXT
+  IMAGE
+  VIDEO
+  LINK
+  POLL
+  EVENT
+  EVENT_ANNOUNCEMENT
+  RESOURCE
+  SUCCESS_STORY
+  ANNOUNCEMENT
+  DISCUSSION
+}
+
+enum PostStatus {
+  ACTIVE
+  HIDDEN
+  DELETED
+  FLAGGED
+}
+
+enum EventType {
+  MEETUP
+  WORKSHOP
+  CONFERENCE
+  WEBINAR
+  SOCIAL
+  VOLUNTEER
+  FUNDRAISER
+  NETWORKING
+  EDUCATIONAL
+  OTHERS
+}
+
+enum EventStatus {
+  DRAFT
+  UPCOMING
+  ONGOING
+  COMPLETED
+  CANCELLED
+  POSTPONED
+}
+
+enum AttendeeStatus {
+  REGISTERED
+  WAITLIST
+  CONFIRMED
+  ATTENDED
+  NO_SHOW
+  CANCELLED
+}
+
+enum TrustLevel {
+  NEWCOMER
+  BRONZE
+  SILVER
+  GOLD
+  PLATINUM
+  DIAMOND
+  LEGEND
+}
+
+enum KarmaEventType {
+  DAILY_LOGIN
+  FIRST_LOGIN
+  PROFILE_COMPLETE
+  FIRST_TRADE_POSTED
+  FIRST_TRADE_COMPLETED
+  TRADE_COMPLETED
+  FIRST_DONATION
+  DONATION_MADE
+  FIRST_GIFT_GIVEN
+  GIFT_GIVEN
+  GIFT_CLAIMED
+  COMMUNITY_JOINED
+  COMMUNITY_POST
+  COMMUNITY_EVENT_ATTENDED
+  PROFILE_VERIFIED
+  REFERRAL_BONUS
+  STREAK_BONUS
+  MANUAL_ADJUSTMENT
+  RECEIVE_REVIEW
+  RECEIVE_NEGATIVE_REVIEW
+  PROFILE_LIKED
+  KARMA_WITHDRAWN
+}
+
+enum AchievementCategory {
+  GENERAL
+  TRADING
+  DONATIONS
+  GIFTS
+  COMMUNITY
+  SOCIAL
+  MILESTONES
+}
+
+enum AchievementRarity {
+  COMMON
+  UNCOMMON
+  RARE
+  EPIC
+  LEGENDARY
+}
+
+enum NotificationType {
+  TRADE_OFFER_RECEIVED
+  TRADE_OFFER_ACCEPTED
+  TRADE_OFFER_REJECTED
+  TRADE_COMPLETED
+  TRADE_CANCELLED
+  GIFT_RECEIVED
+  GIFT_CLAIMED
+  GIFT_EXPIRED
+  DONATION_RECEIVED
+  CAMPAIGN_MILESTONE
+  CAMPAIGN_COMPLETED
+  COMMUNITY_INVITE
+  COMMUNITY_POST_LIKED
+  COMMUNITY_POST_COMMENTED
+  COMMUNITY_EVENT_REMINDER
+  KARMA_LEVEL_UP
+  KARMA_ACHIEVEMENT
+  SYSTEM_ANNOUNCEMENT
+  PROMOTION_AVAILABLE
+  ACCOUNT_SECURITY
+  VERIFICATION_REQUIRED
+  WELCOME
+  BROADCAST
+  REFERRAL_SIGNUP
+  REFERRAL_BONUS_EARNED
+  NEARBY_LISTING
+}
+
+enum NotificationPriority {
+  LOW
+  NORMAL
+  HIGH
+  URGENT
+}
+
+enum DeviceType {
+  IOS
+  ANDROID
+  WEB
+}
+
+enum BroadcastStatus {
+  DRAFT
+  SCHEDULED
+  SENDING
+  SENT
+  CANCELLED
+  FAILED
+}
+
+enum ConversationType {
+  DIRECT
+  GROUP
+  TRADE
+  SUPPORT
+  DONATION
+}
+
+enum ParticipantRole {
+  OWNER
+  ADMIN
+  MEMBER
+}
+
+enum ChatMessageType {
+  TEXT
+  IMAGE
+  FILE
+  LOCATION
+  SYSTEM
+  TRADE_OFFER
+  PAYMENT
+}
+
+enum MessageStatus {
+  SENDING
+  SENT
+  DELIVERED
+  READ
+  FAILED
+}
+
+enum ReportReason {
+  SPAM
+  HARASSMENT
+  INAPPROPRIATE_CONTENT
+  SCAM
+  SUSPICIOUS_ACTIVITY
+  VIOLENCE
+  OTHER
+}
+
+enum UserReportAdminAction {
+  DISMISS
+  WARN
+  SUSPEND
+  BAN
+}
+
+enum ReferralStatus {
+  SIGNED_UP
+  FIRST_TRADE
+  FIRST_DONATION
+  FIRST_GIFT
+}
+
+enum AppealStatus {
+  PENDING
+  UNDER_REVIEW
+  APPROVED
+  REJECTED
+}
+
+enum ReportStatus {
+  PENDING
+  REVIEWING
+  RESOLVED
+  DISMISSED
+}
+
+enum GatewayName {
+  paystack
+  stripe
+  paypal
+  flutterwave
+}
+
+enum PaymentMode {
+  test
+  live
+}
+
+// Offer/Ask Flow Enums
+enum IntentType {
+  OFFER
+  ASK
+  NONE
+}
+
+enum IntentSubType {
+  TRADE
+  GIVE
+  REQUEST
+  HELP_CAMPAIGN
+  NONE
+}
+
+enum PollStatus {
+  ACTIVE
+  CLOSED
+}
+
+enum SupportTicketType {
+  SUPPORT
+  BUG_REPORT
+  EMERGENCY
+}
+
+enum SupportTicketStatus {
+  OPEN
+  IN_PROGRESS
+  WAITING
+  RESOLVED
+  CLOSED
+}
+
+enum SupportTicketPriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+enum SupportChatSessionStatus {
+  BOT
+  AWAITING_ADMIN
+  ADMIN_ACTIVE
+  CLOSED
+}

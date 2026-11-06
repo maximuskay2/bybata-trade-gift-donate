@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Terms of Service | ByBata</title>
+  <link rel="icon" href="https://mails.bybata.com/logomail.png" type="image/png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;700;900&display=swap" rel="stylesheet">
+  <style>
+    :root {
+        --primary: #7B2CBF;
+        --primary-glow: rgba(123, 44, 191, 0.25);
+        --bg-dark: #0D0B12;
+        --bg-card: rgba(30, 26, 40, 0.65);
+        --border-glass: rgba(255, 255, 255, 0.08);
+        --text-main: #ffffff;
+        --text-sub: #b5b3bc;
+        --blur: 24px;
+        --navbar-bg: rgba(13, 11, 18, 0.75);
+        --footer-bg: #09070D;
+    }
+    [data-theme="light"] {
+        --bg-dark: #F8FAFF;
+        --bg-card: rgba(255, 255, 255, 0.75);
+        --border-glass: rgba(0, 0, 0, 0.06);
+        --text-main: #1C1921;
+        --text-sub: #67656E;
+        --navbar-bg: rgba(248, 250, 255, 0.8);
+        --footer-bg: #F0F2F8;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; transition: background-color 0.3s ease, color 0.3s ease; }
+    body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: var(--bg-dark); color: var(--text-main); line-height: 1.6; }
+    .container { max-width: 1200px; margin: 0 auto; padding: 0 24px; }
+    nav { padding: 20px 0; position: fixed; width: 100%; top: 0; z-index: 1000; transition: 0.3s ease; }
+    nav.scrolled { background: var(--navbar-bg); backdrop-filter: blur(15px); border-bottom: 1px solid var(--border-glass); }
+    .nav-content { display: flex; justify-content: space-between; align-items: center; }
+    .logo { display: inline-flex; align-items: center; gap: 12px; font-weight: 900; font-size: 24px; text-decoration: none; color: var(--text-main); }
+    .logo img { height: 40px; width: 40px; border-radius: 12px; }
+    .nav-right { display: flex; align-items: center; gap: 24px; }
+    .nav-links { display: flex; gap: 32px; }
+    .nav-links a { text-decoration: none; color: var(--text-sub); font-weight: 700; font-size: 0.95rem; }
+    .nav-links a:hover, .nav-links a.active { color: var(--text-main); }
+    .theme-toggle-btn { width: 44px; height: 44px; background: var(--bg-card); border: 1.5px solid var(--border-glass); border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 1.2rem; color: var(--text-main); }
+    .page-header { padding: 160px 0 60px; text-align: center; }
+    .page-header h1 { font-size: 3.5rem; font-weight: 900; letter-spacing: -1.5px; margin-bottom: 12px; }
+    .page-header p { font-size: 1.2rem; color: var(--text-sub); }
+    .glass-card { background: var(--bg-card); backdrop-filter: blur(var(--blur)); border: 1.5px solid var(--border-glass); border-radius: 28px; padding: 48px; max-width: 800px; margin: 0 auto 100px; }
+    .prose h3 { font-size: 1.5rem; font-weight: 800; margin: 32px 0 16px; color: var(--text-main); }
+    .prose h3:first-of-type { margin-top: 0; }
+    .prose p { color: var(--text-sub); margin-bottom: 16px; font-size: 1.05rem; }
+    .prose ul { padding-left: 24px; margin-bottom: 20px; color: var(--text-sub); }
+    .prose li { margin-bottom: 8px; }
+    a.link { color: var(--primary); text-decoration: none; font-weight: 600; }
+    footer { padding: 80px 0 40px; border-top: 1px solid var(--border-glass); background: var(--footer-bg); }
+    .footer-grid { display: grid; grid-template-columns: 2fr 1fr 1fr 1fr; gap: 40px; }
+    .footer-col h4 { font-weight: 800; margin-bottom: 24px; font-size: 0.95rem; text-transform: uppercase; letter-spacing: 1px; color: var(--text-main); }
+    .footer-col ul { list-style: none; }
+    .footer-col ul li { margin-bottom: 14px; }
+    .footer-col ul li a { color: var(--text-sub); text-decoration: none; font-size: 0.95rem; }
+    .footer-col ul li a:hover { color: var(--text-main); }
+    .social-row { display: flex; gap: 12px; margin-top: 24px; }
+    .social-link { width: 42px; height: 42px; background: rgba(123, 44, 191, 0.05); border: 1px solid var(--border-glass); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: var(--text-sub); text-decoration: none; font-weight: 700; }
+    .social-link:hover { background: var(--primary); color: #fff; transform: translateY(-3px); }
+    .copyright { text-align: center; color: #5c5965; font-size: 0.9rem; margin-top: 60px; padding-top: 30px; border-top: 1px solid rgba(255,255,255,0.03); }
+    @media (max-width: 768px) { .footer-grid { grid-template-columns: 1fr 1fr; } .nav-links { display: none; } }
+  </style>
+</head>
+<body>
+    <nav id="navbar">
+        <div class="container nav-content">
+            <a href="index.html" class="logo"><img src="https://mails.bybata.com/logomail.png" alt="">ByBata</a>
+            <div class="nav-right">
+                <div class="nav-links">
+                    <a href="about.html">About</a>
+                    <a href="help.html">Help</a>
+                    <a href="contact.html">Contact</a>
+                </div>
+                <button class="theme-toggle-btn" id="theme-toggle">🌙</button>
+            </div>
+        </div>
+    </nav>
+
+    <div class="page-header">
+        <div class="container">
+            <h1>Terms of Service</h1>
+            <p>Last updated: June 2026</p>
+        </div>
+    </div>
+
+    <section class="container">
+        <div class="glass-card prose">
+            <p class="lead">These Terms govern your use of the ByBata mobile application, website at <a class="link" href="https://bybata.com">bybata.com</a>, and related services (collectively, the “Service”). By creating an account or using the Service, you agree to these Terms.</p>
+            
+            <h3>1. Agreement Operator</h3>
+            <p>The Service is operated by <strong>ByBata Inc.</strong>, with active infrastructure deployment nodes mapped across Lagos, Nigeria. For compliance feedback, support tickets can be initiated at <a class="link" href="mailto:support@bybata.com">support@bybata.com</a>.</p>
+            
+            <h3>2. User Eligibility & Onboarding Requirements</h3>
+            <ul>
+                <li>You must be at least 18 years old to access transaction services.</li>
+                <li>Accounts must be linked to verified information parameters to pass platform verification reviews.</li>
+            </ul>
+        </div>
+    </section>
+
+    <footer>
+        <div class="container">
+            <div class="footer-grid">
+                <div class="footer-col">
+                    <a href="index.html" class="logo" style="margin-bottom: 24px;"><img src="https://mails.bybata.com/logomail.png" alt="">ByBata</a>
+                    <p style="color: var(--text-sub); font-size: 0.95rem;">Building the most trusted community for trading, gifting, and growing together.</p>
+                    <div class="social-row">
+                        <a href="https://www.instagram.com/bybata_app?igsh=MWx6d3JzNXIxem16MQ%3D%3D&utm_source=qr" target="_blank" class="social-link">IG</a>
+                        <a href="https://x.com/bybata_" target="_blank" class="social-link">X</a>
+                    </div>
+                </div>
+                <div class="footer-col">
+                    <h4>Company</h4>
+                    <ul>
+                        <li><a href="about.html">About Us</a></li>
+                        <li><a href="careers.html">Careers</a></li>
+                        <li><a href="press.html">Press</a></li>
+                    </ul>
+                </div>
+                <div class="footer-col">
+                    <h4>Support</h4>
+                    <ul>
+                        <li><a href="help.html">Help Center</a></li>
+                        <li><a href="safety.html">Safety Guidelines</a></li>
+                        <li><a href="contact.html">Contact Us</a></li>
+                    </ul>
+                </div>
+                <div class="footer-col">
+                    <h4>Legal</h4>
+                    <ul>
+                        <li><a href="privacy.html">Privacy Policy</a></li>
+                        <li><a href="terms.html">Terms of Service</a></li>
+                    </ul>
+                </div>
+            </div>
+            <div class="copyright">&copy; 2026 ByBata Inc. Lagos, Nigeria. All rights reserved.</div>
+        </div>
+    </footer>
+
+    <script>
+        const toggle = document.getElementById('theme-toggle');
+        toggle.addEventListener('click', () => {
+            const current = document.documentElement.getAttribute('data-theme');
+            if (current === 'light') {
+                document.documentElement.setAttribute('data-theme', 'dark');
+                toggle.innerText = '🌙';
+            } else {
+                document.documentElement.setAttribute('data-theme', 'light');
+                toggle.innerText = '☀️';
+            }
+        });
+        window.addEventListener('scroll', () => {
+            const nav = document.getElementById('navbar');
+            if (window.scrollY > 50) nav.classList.add('scrolled');
+            else nav.classList.remove('scrolled');
+        });
+    </script>
+</body>
+</html>

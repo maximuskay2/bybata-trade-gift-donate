@@ -1,0 +1,42 @@
+# ByBata.com — share / deep-link fallbacks (Hostinger LiteSpeed)
+# Upload to public_html/ (same folder as index.html, terms.html, privacy.html)
+#
+# Required for iOS "Support on web":
+#   - campaign-support.html
+#   - campaign-support-proxy.php  (same-origin API — fixes loading / CORS)
+#   - this .htaccess
+
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+  RewriteBase /
+
+  # Real files win (terms.html, campaign-support.html, open-app/, app/, images, etc.)
+  RewriteCond %{REQUEST_FILENAME} -f [OR]
+  RewriteCond %{REQUEST_FILENAME} -d
+  RewriteRule ^ - [L]
+
+  # Marketing: one link for social media → smart store router
+  RewriteRule ^get/?$ /app/ [L,R=302]
+  RewriteRule ^download/?$ /app/ [L,R=302]
+
+  # iOS web donate: /campaign/{id}/support → campaign-support.html?id={id}
+  # MUST be before the generic ^campaign/.+ app-link fallback below.
+  RewriteRule ^campaign/([^/]+)/support/?$ /campaign-support.html?id=$1 [L,QSA]
+
+  # /invite/CODE, /trade/UUID, … → one fallback file (must exist on server!)
+  RewriteRule ^trade/.+ /app-link-fallback.html [L,QSA]
+  RewriteRule ^gift/.+ /app-link-fallback.html [L,QSA]
+  RewriteRule ^campaign/.+ /app-link-fallback.html [L,QSA]
+  RewriteRule ^donation/.+ /app-link-fallback.html [L,QSA]
+  RewriteRule ^profile/.+ /app-link-fallback.html [L,QSA]
+  RewriteRule ^invite/.+ /app-link-fallback.html [L,QSA]
+  RewriteRule ^request/.+ /app-link-fallback.html [L,QSA]
+</IfModule>
+
+# AASA / assetlinks content-type (optional; .well-known/ files)
+<IfModule mod_headers.c>
+  <FilesMatch "apple-app-site-association$">
+    Header set Content-Type "application/json"
+    Header set Access-Control-Allow-Origin "*"
+  </FilesMatch>
+</IfModule>

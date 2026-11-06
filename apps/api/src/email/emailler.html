@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{subject}} - {{app_name}}</title>
+    <style>
+        /* RESET STYLES */
+        body { margin: 0; padding: 0; min-width: 100%; font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; font-size: 16px; line-height: 1.5; color: #333333; background-color: #F4F7FA; }
+        a { color: #7B2CBF; text-decoration: none; font-weight: bold; }
+        img { display: block; max-width: 100%; border: 0; }
+        
+        /* 3D BUTTON STYLE */
+        .btn-3d {
+            background: #7B2CBF;
+            background: linear-gradient(to bottom right, #7B2CBF, #5a189a);
+            color: #ffffff !important;
+            padding: 14px 28px;
+            border-radius: 12px;
+            display: inline-block;
+            font-weight: bold;
+            text-align: center;
+            box-shadow: 0 4px 0 #46107a, 0 10px 10px rgba(0,0,0,0.1);
+            transition: all 0.2s;
+        }
+        
+        /* GLASS CONTAINER */
+        .glass-card {
+            background-color: #ffffff;
+            border-radius: 24px;
+            border: 1px solid rgba(255,255,255,0.8);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.08), 0 1px 0 rgba(255,255,255,0.8) inset;
+            overflow: hidden;
+        }
+    </style>
+</head>
+<body style="background-color: #F4F7FA; padding: 40px 0;">
+
+    <table width="100%" border="0" cellspacing="0" cellpadding="0">
+        <tr>
+            <td align="center">
+                
+                <table width="600" border="0" cellspacing="0" cellpadding="0" style="width: 100%; max-width: 600px;">
+                    
+                    <tr>
+                        <td align="center" style="padding-bottom: 30px;">
+                            <img src="{{logo_url}}" alt="{{app_name}}" width="60" height="60" style="display: block; border-radius: 15px; box-shadow: 0 4px 10px rgba(0,0,0,0.1);">
+                        </td>
+                    </tr>
+
+                    <tr>
+                        <td class="glass-card" style="background-color: #ffffff; border-radius: 24px; padding: 40px; box-shadow: 0 10px 30px rgba(0,0,0,0.08);">
+                            
+                            <table width="100%" border="0" cellspacing="0" cellpadding="0">
+                                <tr>
+                                    <td style="color: #1a1a1a; font-size: 16px; line-height: 26px;">
+                                        
+                                        {{email_body}}
+                                        
+                                    </td>
+                                </tr>
+                            </table>
+                            </td>
+                    </tr>
+
+                    <tr>
+                        <td align="center" style="padding-top: 30px; color: #8898aa; font-size: 12px;">
+                            <p style="margin: 0;">&copy; {{current_year}} {{app_name}} Inc.</p>
+                            <p style="margin: 5px 0 0 0;">{{app_name}} · Trade. Gift. Grow.</p>
+                            <p style="margin: 10px 0 0 0;"><a href="#" style="color: #8898aa; text-decoration: underline;">Unsubscribe</a></p>
+                        </td>
+                    </tr>
+
+                </table>
+
+            </td>
+        </tr>
+    </table>
+
+</body>
+</html>

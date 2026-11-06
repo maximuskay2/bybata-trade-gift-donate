@@ -1,0 +1,119 @@
+/* Shared ByBata legal pages — Plus Jakarta Sans + glass theme */
+:root {
+  --primary: #7B2CBF;
+  --primary-dark: #5a189a;
+  --bg: #F4F7FA;
+  --text: #1a1a1a;
+  --text-sub: #666;
+  --glass: rgba(255, 255, 255, 0.85);
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  line-height: 1.6;
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+.container { max-width: 1200px; margin: 0 auto; padding: 0 24px; }
+a { text-decoration: none; color: inherit; transition: 0.2s; }
+a.link { color: var(--primary); font-weight: 600; }
+a.link:hover { color: var(--primary-dark); text-decoration: underline; }
+
+.glass-card {
+  background: var(--glass);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  border-radius: 24px;
+  box-shadow: 0 20px 40px rgba(123, 44, 191, 0.08);
+  padding: 40px;
+}
+@media (max-width: 640px) {
+  .glass-card { padding: 24px 20px; }
+}
+
+nav {
+  padding: 20px 0;
+  background: rgba(244, 247, 250, 0.95);
+  position: sticky;
+  top: 0;
+  z-index: 999;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.04);
+}
+.nav-flex { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px; }
+.logo {
+  font-weight: 800;
+  font-size: 24px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--text);
+}
+.logo img { border-radius: 8px; display: block; }
+.nav-links { display: flex; gap: 20px; font-weight: 600; color: var(--text-sub); }
+.nav-links a:hover { color: var(--primary); }
+
+.page-header { text-align: center; padding: 60px 0 48px; }
+.page-header h1 { font-size: clamp(2rem, 5vw, 3rem); margin-bottom: 10px; color: var(--primary); font-weight: 800; }
+.page-header p { font-size: 1.1rem; color: var(--text-sub); }
+
+.content-section { padding-bottom: 80px; }
+.prose { max-width: 800px; margin: 0 auto; }
+.prose .lead { font-size: 1.05rem; margin-bottom: 28px; color: var(--text-sub); }
+.prose h3 {
+  margin-top: 32px;
+  margin-bottom: 14px;
+  font-size: 1.35rem;
+  font-weight: 800;
+  color: var(--primary);
+}
+.prose h3:first-of-type,
+.prose .lead + h3 { margin-top: 0; }
+.prose h4 {
+  margin-top: 20px;
+  margin-bottom: 10px;
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--text);
+}
+.prose p { margin-bottom: 16px; color: var(--text-sub); }
+.prose ul { margin-bottom: 16px; padding-left: 22px; color: var(--text-sub); }
+.prose li { margin-bottom: 8px; }
+.prose table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+  margin: 16px 0 20px;
+}
+.prose th, .prose td {
+  border: 1px solid rgba(123, 44, 191, 0.12);
+  padding: 12px 14px;
+  text-align: left;
+  color: var(--text-sub);
+}
+.prose th {
+  background: rgba(123, 44, 191, 0.06);
+  font-weight: 700;
+  color: var(--text);
+}
+
+footer {
+  padding: 60px 0 30px;
+  border-top: 1px solid rgba(0, 0, 0, 0.05);
+  margin-top: auto;
+  background: var(--bg);
+}
+.footer-grid { display: grid; grid-template-columns: 2fr 1fr 1fr 1fr; gap: 40px; }
+.footer-col h4 { font-weight: 800; margin-bottom: 20px; font-size: 1rem; }
+.footer-col p { margin-bottom: 10px; font-size: 0.95rem; color: var(--text-sub); }
+.footer-col a:hover { color: var(--primary); }
+.footer-bottom { text-align: center; margin-top: 40px; color: #999; font-size: 0.9rem; }
+@media (max-width: 768px) {
+  .footer-grid { grid-template-columns: 1fr; gap: 28px; }
+  .nav-links { width: 100%; justify-content: center; }
+}

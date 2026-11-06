@@ -1,0 +1,21 @@
+{
+  "applinks": {
+    "apps": [],
+    "details": [
+      {
+        "appID": "24ZAVJC7HG.com.bybata.bybata",
+        "paths": [
+          "/open-app",
+          "/open-app/*",
+          "/trade/*",
+          "/gift/*",
+          "/campaign/*",
+          "/donation/*",
+          "/profile/*",
+          "/invite/*",
+          "/request/*"
+        ]
+      }
+    ]
+  }
+}

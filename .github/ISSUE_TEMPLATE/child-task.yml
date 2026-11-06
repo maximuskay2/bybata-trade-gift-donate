@@ -1,0 +1,71 @@
+---
+name: Child Task — Weekly Subtask
+description: Create a child task for a specific week and track (API/Mobile/Admin/Infra)
+title: "Child Task: <summary>"
+labels: ["child-task"]
+assignees: []
+body:
+  - type: dropdown
+    id: week
+    attributes:
+      label: Week
+      description: Select the delivery week this task belongs to
+      options:
+        - "0"
+        - "1"
+        - "2"
+        - "3"
+        - "4"
+        - "5"
+        - "6"
+        - "7"
+        - "8"
+        - "9"
+        - "10"
+        - "11"
+        - "12"
+    validations:
+      required: true
+  - type: dropdown
+    id: track
+    attributes:
+      label: Track
+      options:
+        - API
+        - Mobile
+        - Admin
+        - Infra
+    validations:
+      required: true
+  - type: input
+    id: parent_epic
+    attributes:
+      label: Parent epic issue URL
+      description: Link the corresponding Week N epic
+      placeholder: https://github.com/<owner>/<repo>/issues/<number>
+  - type: input
+    id: summary
+    attributes:
+      label: Summary
+      placeholder: e.g., Implement POST /v1/auth/login controller
+    validations:
+      required: true
+  - type: textarea
+    id: tasks
+    attributes:
+      label: Tasks
+      description: Checklist of steps
+      value: |
+        - [ ] Step 1
+        - [ ] Step 2
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance criteria
+      value: |
+        - [ ] 
+  - type: textarea
+    id: notes
+    attributes:
+      label: Notes/Links
+      description: Any context, designs, or references
