@@ -103,6 +103,7 @@ async function bootstrap() {
 
   // Raw-body middleware for payment provider webhooks (signature verification requires exact payload)
   app.use('/v1/wallet/webhooks', raw({ type: 'application/json' }));
+  app.use('/v1/trade-topups/paypal/webhook', raw({ type: 'application/json' }));
 
   // Global validation pipe
   app.useGlobalPipes(

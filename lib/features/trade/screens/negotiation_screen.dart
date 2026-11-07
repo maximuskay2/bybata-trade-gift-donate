@@ -13,6 +13,7 @@ import '../providers/trade_backend_provider.dart';
 import '../../../core/providers/auth_provider.dart';
 import '../widgets/item_selection_widget.dart';
 import '../widgets/offer_timeline_widget.dart';
+import '../widgets/even_trade_panel.dart';
 import '../../../features/chat/providers/chat_provider.dart';
 import '../../../features/chat/models/chat_conversation.dart';
 import 'trade_chat_screen.dart';
@@ -345,6 +346,14 @@ class _NegotiationScreenState extends State<NegotiationScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               _buildTargetTradeHeader(primaryColor),
+              if (widget.offerId != null) ...[
+                const SizedBox(height: 16),
+                EvenTradePanel(
+                  tradeId: widget.targetTrade.id,
+                  offerId: widget.offerId,
+                  tradeStatus: widget.targetTrade.status.backendValue,
+                ),
+              ],
               if (widget.parentOfferId != null) ...[
                 const SizedBox(height: 16),
                 _buildCounterContextBanner(primaryColor),

@@ -117,8 +117,439 @@ class _SocialListingCardState extends State<SocialListingCard> {
     return switch (widget.layout) {
       SocialFeedLayout.instagram => _buildInstagramLayout(context),
       SocialFeedLayout.timeline => _buildTimelineLayout(context),
+      SocialFeedLayout.catalog => _buildCatalogLayout(context),
       SocialFeedLayout.bento => _buildBentoLayout(context),
     };
+  }
+
+  /// Two-column product grid used by the trade centre browse tab.
+  Widget _buildCatalogLayout(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final data = widget.data;
+    final onCardTap = _cardNavTap;
+    final offer = _catalogOfferLine(data);
+    final rating = _catalogRatingLabel(data);
+    final tone = _catalogTone(isDark, data.id);
+    final category = _catalogCategoryLabel(data.raw?['category']?.toString());
+
+    return Semantics(
+      label: 'Trade: ${data.title}',
+      button: true,
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          color: isDark ? tone.well : Colors.white,
+          borderRadius: BorderRadius.circular(22),
+          boxShadow: isDark
+              ? null
+              : [
+                  BoxShadow(
+                    color: tone.deep.withValues(alpha: 0.18),
+                    blurRadius: 16,
+                    offset: const Offset(0, 8),
+                  ),
+                ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(8, 8, 8, 0),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(16),
+                  child: Stack(
+                    fit: StackFit.expand,
+                    children: [
+                      ColoredBox(color: tone.well),
+                      ListingMediaView(
+                        media: data.media.feedPreview,
+                        heroTag: 'social_${data.module.name}_${data.id}',
+                        fit: BoxFit.contain,
+                        expand: true,
+                        feedMode: true,
+                        previewImageUrl: data.previewImageUrl,
+                        showVideoPlayBadge: data.media.isVideo,
+                        onMediaTap: onCardTap ?? () {},
+                        autoplayVideo: false,
+                        showPageIndicator: false,
+                      ),
+                      if (category != null)
+                        Positioned(
+                          top: 8,
+                          left: 8,
+                          right: 44,
+                          child: Align(
+                            alignment: Alignment.centerLeft,
+                            child: DecoratedBox(
+                              decoration: BoxDecoration(
+                                color: tone.deep,
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              child: Padding(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                  vertical: 4,
+                                ),
+                                child: Text(
+                                  category,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.w800,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      Positioned(
+                        top: 8,
+                        right: 8,
+                        child: _catalogLikeButton(active: _liked),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(10, 8, 6, 6),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  DebouncedTap(
+                    onTap: onCardTap,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          data.title,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontSize: 14,
+                            height: 1.2,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: -0.2,
+                            color: scheme.onSurface,
+                          ),
+                        ),
+                        if (offer != null || rating != null) ...[
+                          const SizedBox(height: 4),
+                          Row(
+                            children: [
+                              if (offer != null)
+                                Expanded(
+                                  child: Text(
+                                    offer,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w700,
+                                      color: tone.ink,
+                                    ),
+                                  ),
+                                )
+                              else
+                                const Spacer(),
+                              if (rating != null) ...[
+                                const SizedBox(width: 4),
+                                Icon(
+                                  Icons.star_rounded,
+                                  size: 14,
+                                  color: AppTheme.karmaColor,
+                                ),
+                                Text(
+                                  rating,
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w800,
+                                    color: scheme.onSurface,
+                                  ),
+                                ),
+                              ],
+                            ],
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                  Row(
+                    children: [
+                      _catalogIconButton(
+                        icon: Icons.mode_comment_outlined,
+                        label: _messageTooltip ?? 'Message',
+                        color: tone.deep,
+                        background: tone.deep.withValues(alpha: 0.12),
+                        showBadge: data.hasUnreadMessages,
+                        onTap: widget.onMessageTap ?? onCardTap ?? () {},
+                      ),
+                      const SizedBox(width: 4),
+                      _catalogIconButton(
+                        icon: Icons.share_outlined,
+                        label: 'Share listing',
+                        color: tone.ink,
+                        background: tone.deep.withValues(alpha: 0.12),
+                        onTap: () => _share(context),
+                      ),
+                      const Spacer(),
+                      Flexible(
+                        child: _catalogSwapButton(
+                          onPressed: _primaryNavTap,
+                          bright: !isDark,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _catalogLikeButton({required bool active}) {
+    return Semantics(
+      button: true,
+      label: 'Like listing',
+      child: Material(
+        color: active ? const Color(0xFFFFE4EC) : Colors.white.withValues(alpha: 0.94),
+        shape: const CircleBorder(),
+        elevation: 1,
+        shadowColor: const Color(0x33EC407A),
+        child: InkWell(
+          customBorder: const CircleBorder(),
+          onTap: () {
+            HapticFeedback.selectionClick();
+            setState(() => _liked = !_liked);
+          },
+          child: Padding(
+            padding: const EdgeInsets.all(6),
+            child: Icon(
+              active ? Icons.favorite_rounded : Icons.favorite_border_rounded,
+              size: 18,
+              color: active ? const Color(0xFFE91E63) : const Color(0xFF1C1B1F),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _catalogIconButton({
+    required IconData icon,
+    required String label,
+    required Color color,
+    required VoidCallback onTap,
+    Color? background,
+    bool showBadge = false,
+  }) {
+    return Semantics(
+      button: true,
+      label: label,
+      child: Tooltip(
+        message: label,
+        child: Material(
+          color: background ?? Colors.transparent,
+          shape: const CircleBorder(),
+          child: InkWell(
+            customBorder: const CircleBorder(),
+            onTap: () {
+              HapticFeedback.selectionClick();
+              onTap();
+            },
+            child: SizedBox(
+              width: 28,
+              height: 28,
+              child: Center(
+                child: showBadge
+                    ? Badge(
+                        smallSize: 6,
+                        child: Icon(icon, size: 16, color: color),
+                      )
+                    : Icon(icon, size: 16, color: color),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  _CatalogTone _catalogTone(bool isDark, String id) {
+    const light = <_CatalogTone>[
+      _CatalogTone(Color(0xFFEDE7F6), Color(0xFF5E35B1), Color(0xFF7E57C2)),
+      _CatalogTone(Color(0xFFFFF3D6), Color(0xFFB45309), Color(0xFFF59E0B)),
+      _CatalogTone(Color(0xFFE3F2FD), Color(0xFF1565C0), Color(0xFF42A5F5)),
+      _CatalogTone(Color(0xFFE8F5E9), Color(0xFF2E7D32), Color(0xFF43A047)),
+      _CatalogTone(Color(0xFFFCE4EC), Color(0xFFC2185B), Color(0xFFEC407A)),
+      _CatalogTone(Color(0xFFFFF0E0), Color(0xFFE65100), Color(0xFFFF8A65)),
+    ];
+    const dark = <_CatalogTone>[
+      _CatalogTone(Color(0xFF3A2A5C), Color(0xFFD1C4E9), Color(0xFF9575CD)),
+      _CatalogTone(Color(0xFF4A3418), Color(0xFFFFE082), Color(0xFFF59E0B)),
+      _CatalogTone(Color(0xFF1A3348), Color(0xFF90CAF9), Color(0xFF42A5F5)),
+      _CatalogTone(Color(0xFF1B3A2A), Color(0xFFA5D6A7), Color(0xFF66BB6A)),
+      _CatalogTone(Color(0xFF4A2033), Color(0xFFF48FB1), Color(0xFFEC407A)),
+      _CatalogTone(Color(0xFF4A2C1A), Color(0xFFFFCC80), Color(0xFFFF8A65)),
+    ];
+    final tones = isDark ? dark : light;
+    return tones[id.hashCode.remainder(tones.length).abs()];
+  }
+
+  Widget _catalogSwapButton({
+    required VoidCallback? onPressed,
+    required bool bright,
+  }) {
+    final glow = AppColors.primary.withValues(alpha: bright ? 0.45 : 0.55);
+    return Semantics(
+      button: true,
+      label: 'Swap Offer',
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(20),
+          gradient: const LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              AppColors.primaryLight,
+              AppColors.primary,
+              AppColors.primaryDark,
+            ],
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: glow,
+              blurRadius: 12,
+              spreadRadius: 0.5,
+              offset: const Offset(0, 3),
+            ),
+          ],
+        ),
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            onTap: onPressed,
+            borderRadius: BorderRadius.circular(20),
+            child: const Padding(
+              padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              child: Text(
+                'Swap',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w800,
+                  fontSize: 13,
+                  letterSpacing: 0.2,
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  String? _catalogOfferLine(SocialListingCardData data) {
+    final raw = data.raw ?? const <String, dynamic>{};
+    final meta = raw['metadata'];
+    final sources = <Map>[
+      raw,
+      if (meta is Map) meta,
+    ];
+
+    for (final source in sources) {
+      final wants = _catalogWantNames(source);
+      if (wants.isNotEmpty) {
+        return wants.length == 1
+            ? 'Wants ${wants.first}'
+            : 'Wants ${wants.first} +${wants.length - 1}';
+      }
+    }
+    for (final source in sources) {
+      final amount = _catalogAmount(source);
+      if (amount != null) return 'Est. \$$amount';
+    }
+
+    final category = _catalogCategoryLabel(raw['category']?.toString());
+    final place = data.distanceLabel?.trim();
+    if (category != null && place != null && place.isNotEmpty) {
+      return '$category · $place';
+    }
+    if (category != null) return category;
+    if (place != null && place.isNotEmpty) return place;
+    final description = data.description.trim();
+    if (description.isNotEmpty) return description;
+    return null;
+  }
+
+  List<String> _catalogWantNames(Map source) {
+    for (final key in const [
+      'interestedItems',
+      'lookingFor',
+      'wantedItems',
+      'desiredItems',
+    ]) {
+      final value = source[key];
+      if (value is List) {
+        final names = value
+            .map((item) {
+              if (item is Map) {
+                return (item['name'] ?? item['title'] ?? '').toString().trim();
+              }
+              return item.toString().trim();
+            })
+            .where((item) => item.isNotEmpty)
+            .toList();
+        if (names.isNotEmpty) return names;
+      }
+      if (value is String && value.trim().isNotEmpty) {
+        return value
+            .split(',')
+            .map((item) => item.trim())
+            .where((item) => item.isNotEmpty)
+            .toList();
+      }
+    }
+    return const [];
+  }
+
+  String? _catalogCategoryLabel(String? raw) {
+    if (raw == null || raw.trim().isEmpty) return null;
+    return raw
+        .trim()
+        .replaceAll('_', ' ')
+        .split(RegExp(r'\s+'))
+        .map((word) {
+          if (word.isEmpty) return word;
+          final lower = word.toLowerCase();
+          return '${lower[0].toUpperCase()}${lower.substring(1)}';
+        })
+        .join(' ');
+  }
+
+  int? _catalogAmount(Map source) {
+    for (final key in const ['estimatedValue', 'value']) {
+      final value = source[key];
+      final amount = value is num ? value.round() : int.tryParse('$value');
+      if (amount != null && amount > 0) return amount;
+    }
+    return null;
+  }
+
+  String? _catalogRatingLabel(SocialListingCardData data) {
+    final owner = data.raw?['owner'];
+    if (owner is! Map) return null;
+    final rating = owner['rating'];
+    if (rating is! num || rating <= 0) return null;
+    return rating.toStringAsFixed(1);
   }
 
   Widget _buildTimelineLayout(BuildContext context) {
@@ -885,6 +1316,14 @@ class _SocialListingCardState extends State<SocialListingCard> {
       ),
     );
   }
+}
+
+class _CatalogTone {
+  final Color well;
+  final Color ink;
+  final Color deep;
+
+  const _CatalogTone(this.well, this.ink, this.deep);
 }
 
 /// Frosted overlay badge for timeline feed media corners.

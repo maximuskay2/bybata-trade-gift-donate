@@ -54,13 +54,22 @@ class ConversationalCardActions {
     );
     switch (data.module) {
       case SocialListingModule.trade:
-        ConversationalAnalytics.aiIntentConversion(kind: 'offer', listingId: data.id);
+        ConversationalAnalytics.aiIntentConversion(
+          kind: 'offer',
+          listingId: data.id,
+        );
         await _tradeOffer(context, data);
       case SocialListingModule.gift:
-        ConversationalAnalytics.aiIntentConversion(kind: 'claim', listingId: data.id);
+        ConversationalAnalytics.aiIntentConversion(
+          kind: 'claim',
+          listingId: data.id,
+        );
         await _giftClaim(context, data);
       case SocialListingModule.donation:
-        ConversationalAnalytics.aiIntentConversion(kind: 'donation', listingId: data.id);
+        ConversationalAnalytics.aiIntentConversion(
+          kind: 'donation',
+          listingId: data.id,
+        );
         await _donationSupport(context, data);
     }
   }
@@ -98,12 +107,11 @@ class ConversationalCardActions {
       return;
     }
 
-    GuardedNavigator.push(context, 
+    GuardedNavigator.push(
+      context,
       MaterialPageRoute(
-        builder: (_) => ChatScreen(
-          conversation: conversation!,
-          chatType: _chatType(data),
-        ),
+        builder: (_) =>
+            ChatScreen(conversation: conversation!, chatType: _chatType(data)),
       ),
     );
   }
@@ -143,19 +151,20 @@ class ConversationalCardActions {
         final items = payload['items'] as List? ?? [];
         userTrades = items
             .whereType<Map>()
-            .map((m) => trade_models.Trade.fromJson(Map<String, dynamic>.from(m)))
+            .map(
+              (m) => trade_models.Trade.fromJson(Map<String, dynamic>.from(m)),
+            )
             .toList();
       }
     } catch (_) {}
 
     if (!context.mounted) return;
 
-    await GuardedNavigator.push(context, 
+    await GuardedNavigator.push(
+      context,
       MaterialPageRoute(
-        builder: (_) => NegotiationScreen(
-          targetTrade: target!,
-          userTrades: userTrades,
-        ),
+        builder: (_) =>
+            NegotiationScreen(targetTrade: target!, userTrades: userTrades),
       ),
     );
 
@@ -165,9 +174,8 @@ class ConversationalCardActions {
         content: const Text('View your offers in Trade Center'),
         action: SnackBarAction(
           label: 'Open',
-          onPressed: () => NotificationNavigation.openTradeOffersHub(
-            tradeId: data.id,
-          ),
+          onPressed: () =>
+              NotificationNavigation.openTradeOffersHub(tradeId: data.id),
         ),
       ),
     );
@@ -180,7 +188,8 @@ class ConversationalCardActions {
     if (AppRoutes.requireSignIn(context)) return;
     final gift = _giftFromCard(data);
     if (gift != null) {
-      await GuardedNavigator.pushNamed(context,
+      await GuardedNavigator.pushNamed(
+        context,
         AppConstants.claimGiftRoute,
         arguments: AppRoutes.giftToLegacyMap(gift),
       );

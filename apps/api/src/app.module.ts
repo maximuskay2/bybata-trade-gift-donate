@@ -14,6 +14,7 @@ import { StorageModule } from './storage/storage.module';
 import { AdminModule } from './admin/admin.module';
 import { WalletModule } from './wallet/wallet.module';
 import { TradesModule } from './trades/trades.module';
+import { TradeTopUpModule } from './trade-topup/trade-topup.module';
 import { GiftsModule } from './gifts/gifts.module';
 import { CampaignsModule } from './campaigns/campaigns.module';
 import { CommunitiesModule } from './communities/communities.module';
@@ -155,6 +156,7 @@ import { SharedModule } from './shared/shared.module';
     AdminModule,
     WalletModule,
     TradesModule,
+    TradeTopUpModule,
     GiftsModule,
     CampaignsModule,
     CommunitiesModule,

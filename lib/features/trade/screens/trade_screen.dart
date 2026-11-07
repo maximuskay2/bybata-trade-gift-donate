@@ -294,7 +294,7 @@ class _TradeScreenState extends State<TradeScreen> with SingleTickerProviderStat
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     return Scaffold(
-      backgroundColor: isDark ? const Color(0xFF0D0B12) : const Color(0xFFF8FAFF),
+      backgroundColor: isDark ? const Color(0xFF0D0B12) : AppColors.primaryTintSoft,
       body: Stack(
         children: [
           Column(
@@ -499,7 +499,7 @@ class _TradeScreenState extends State<TradeScreen> with SingleTickerProviderStat
 
     return SocialFeedList(
       items: feedItems,
-      layout: SocialFeedLayout.timeline,
+      layout: SocialFeedLayout.catalog,
       isLoading: _isLoading,
       hasMore: _browseHasMore,
       error: _browseLoadError,
@@ -510,17 +510,32 @@ class _TradeScreenState extends State<TradeScreen> with SingleTickerProviderStat
           padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
           child: Container(
             decoration: BoxDecoration(
-              color: isDark ? const Color(0xFF15101F) : Colors.black.withValues(alpha: 0.02),
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: isDark ? Colors.white10 : Colors.black12, width: 1.2),
+              color: isDark ? const Color(0xFF1C1826) : Colors.white,
+              borderRadius: BorderRadius.circular(28),
+              boxShadow: isDark
+                  ? null
+                  : [
+                      BoxShadow(
+                        color: AppColors.primary.withValues(alpha: 0.06),
+                        blurRadius: 16,
+                        offset: const Offset(0, 6),
+                      ),
+                    ],
             ),
             child: TextField(
               controller: _searchController,
               onChanged: (v) => setState(() => _searchQuery = v.trim().toLowerCase()),
-              style: const TextStyle(fontWeight: FontWeight.w700),
+              style: const TextStyle(fontWeight: FontWeight.w600),
               decoration: BorderlessInputDecoration.search(
-                hintText: 'Search items...',
-                prefixIcon: const Icon(Icons.search_rounded, color: Colors.grey),
+                hintText: 'Search trades',
+                hintStyle: TextStyle(
+                  color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.4),
+                  fontWeight: FontWeight.w600,
+                ),
+                prefixIcon: Icon(
+                  Icons.search_rounded,
+                  color: isDark ? Colors.white54 : AppTheme.tradeColor,
+                ),
               ),
             ),
           ),
@@ -566,26 +581,55 @@ class _TradeScreenState extends State<TradeScreen> with SingleTickerProviderStat
       child: Row(
         children: _categories.map((cat) => Padding(
           padding: const EdgeInsets.only(right: 6),
-          child: FilterChip(
-            label: Text(cat),
-            selected: _selectedCategory == cat,
-            onSelected: (_) {
-              setState(() => _selectedCategory = cat);
-              _loadTradeData(refresh: true);
-            },
-            labelStyle: TextStyle(
-              color: _selectedCategory == cat ? Colors.white : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
-              fontSize: 12,
-              fontWeight: FontWeight.w800,
-            ),
-            selectedColor: AppTheme.tradeColor,
-            backgroundColor: isDark ? Colors.white.withValues(alpha: 0.04) : Colors.black.withValues(alpha: 0.03),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16), side: BorderSide.none),
-            showCheckmark: false,
-          ),
+          child: _browseCategoryChip(cat, isDark),
         )).toList(),
       ),
     );
+  }
+
+  Widget _browseCategoryChip(String cat, bool isDark) {
+    final selected = _selectedCategory == cat;
+    final color = _browseChipColor(cat);
+    final labelColor = selected
+        ? Colors.white
+        : (isDark ? Color.lerp(color, Colors.white, 0.55)! : color);
+    return GestureDetector(
+      onTap: () {
+        setState(() => _selectedCategory = cat);
+        _loadTradeData(refresh: true);
+      },
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 180),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+        decoration: BoxDecoration(
+          color: selected
+              ? color
+              : color.withValues(alpha: isDark ? 0.28 : 0.14),
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: Text(
+          cat,
+          style: TextStyle(
+            color: labelColor,
+            fontSize: 13,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Color _browseChipColor(String cat) {
+    return switch (cat) {
+      'Electronics' => const Color(0xFF5C6BC0),
+      'Books' => const Color(0xFF8D6E63),
+      'Clothing' => const Color(0xFFEC407A),
+      'Home & Garden' => const Color(0xFF26A69A),
+      'Sports' => const Color(0xFF42A5F5),
+      'Tools' => const Color(0xFFFB8C00),
+      'Others' => AppColors.primaryMuted,
+      _ => AppTheme.tradeColor,
+    };
   }
 
   Widget _buildMyTradesTab() {

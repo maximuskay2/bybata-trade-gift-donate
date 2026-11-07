@@ -326,4 +326,69 @@ class TradeApi {
       rethrow;
     }
   }
+
+  Future<Map<String, dynamic>> evenTrade(
+    String tradeId,
+    String offerId, {
+    String? ownerCondition,
+    String? bidderCondition,
+  }) async {
+    final res = await _dio.post(
+      '/v1/trades/$tradeId/offers/$offerId/even',
+      data: {
+        if (ownerCondition != null) 'ownerCondition': ownerCondition,
+        if (bidderCondition != null) 'bidderCondition': bidderCondition,
+      },
+    );
+    return Map<String, dynamic>.from(res.data as Map);
+  }
+
+  Future<List<Map<String, dynamic>>> listTradeTopUps(String tradeId) async {
+    final res = await _dio.get('/v1/trades/$tradeId/topups');
+    final data = res.data;
+    if (data is List) {
+      return data.map((row) => Map<String, dynamic>.from(row as Map)).toList();
+    }
+    return const [];
+  }
+
+  Future<Map<String, dynamic>> respondTradeTopUp(
+    String topUpId, {
+    required String action,
+    double? amount,
+  }) async {
+    final res = await _dio.post(
+      '/v1/trade-topups/$topUpId/respond',
+      data: {
+        'action': action,
+        if (amount != null) 'amount': amount,
+      },
+    );
+    return Map<String, dynamic>.from(res.data as Map);
+  }
+
+  Future<Map<String, dynamic>> createTradeTopUpOrder(String topUpId) async {
+    final res = await _dio.post('/v1/trade-topups/$topUpId/paypal/order');
+    return Map<String, dynamic>.from(res.data as Map);
+  }
+
+  Future<Map<String, dynamic>> captureTradeTopUp(String topUpId, {String? orderId}) async {
+    final res = await _dio.post(
+      '/v1/trade-topups/$topUpId/paypal/capture',
+      data: {
+        if (orderId != null) 'orderId': orderId,
+      },
+    );
+    return Map<String, dynamic>.from(res.data as Map);
+  }
+
+  Future<Map<String, dynamic>> disputeTrade(String tradeId, {String? reason}) async {
+    final res = await _dio.post(
+      '/v1/trades/$tradeId/dispute',
+      data: {
+        if (reason != null) 'reason': reason,
+      },
+    );
+    return Map<String, dynamic>.from(res.data as Map);
+  }
 }

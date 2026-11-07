@@ -171,6 +171,15 @@ export class TradesController {
     return this.trades.cancelTrade(user.sub, id);
   }
 
+  @Post(':id/dispute')
+  async dispute(
+    @CurrentUser() user: any,
+    @Param('id') id: string,
+    @Body() body: { reason?: string },
+  ) {
+    return this.trades.disputeTrade(user.sub, id, body?.reason);
+  }
+
   @Delete(':id')
   async delete(@CurrentUser() user: any, @Param('id') id: string) {
     return this.trades.deleteTrade(user.sub, id);

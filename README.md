@@ -1,88 +1,64 @@
-# byBata
+# Bybata
 
-byBata is a trade-by-barter marketplace by **Maximusinfotech Services**. It brings together trading, gifting, donations, communities, messaging and a BYC wallet.
+Trade, gift, and donate. This README covers the PayPal fair-trade top-up.
 
-This is a sanitized source snapshot prepared for a prospective PayPal hackathon repository. It is not a production backup or a claim that the existing product was developed during the event. Existing PayPal payment and AI search code must be distinguished from any new hackathon work. No new hackathon feature is implemented by this cleanup.
+When two items in a trade are not worth the same, Bybata suggests a cash top-up, both people accept or counter it, and the difference is paid and refunded with PayPal. Gift and donate stay free.
 
-## Structure
+## Run the API
 
-- `lib/`, `android/`, `ios/`, `web/` and desktop folders: Flutter application.
-- `apps/api/`: NestJS API, Prisma and PostgreSQL.
-- `apps/admin/`: Next.js administration interface.
-- `docker-compose.yml`: local PostgreSQL, Redis and MinIO services.
-
-## Requirements
-
-Use Flutter with Dart compatible with `^3.9.0`, Node.js 22 LTS with npm, and Docker Compose v2. Android and iOS builds also need their platform SDKs. Dependency installation and full application builds have not been verified for this snapshot.
-
-## Safe local setup
-
-Never connect this copy, its tests, seed scripts or administrative tools to production services. Some inherited source and documentation still reference the production application. Always explicitly configure local endpoints. Do not run production deployment, purge, backup, scenario or seed scripts without reviewing them first.
-
-### 1. Local services
-
-```sh
-cp .env.example .env
-```
-
-Replace all three placeholders in `.env` with unique local passwords, then:
-
-```sh
-docker compose up -d
-```
-
-PostgreSQL listens on port 5432, Redis on 6379 and MinIO on 9000 with its console on 9001. MinIO creates a local `bybata` bucket. These containers are for local use only.
-
-### 2. API
-
-```sh
+```bash
 cd apps/api
 cp .env.example .env
 ```
 
-Set `DATABASE_URL` and `REDIS_URL` to the local passwords above, and `STORAGE_SECRET_ACCESS_KEY` to the local MinIO password. URL-encode passwords used in URLs. Generate separate random JWT secrets, for example with `openssl rand -hex 32`. For encrypted administrative configuration, provide a new `CONFIG_ENCRYPTION_KEY` compatible with the encryption helper in the API. Optional third-party features require your own isolated development credentials.
+Set `DATABASE_URL`. For a real sandbox payment set `PAYPAL_CLIENT_ID`, `PAYPAL_CLIENT_SECRET`, `PAYPAL_ENV=sandbox`, and `PAYPAL_WEBHOOK_ID`. Leave `OPENAI_API_KEY` empty to use the built-in category price bands. Set it on the server only when you want the model to write the reason.
 
-```sh
-npm ci
+To walk through checkout without PayPal keys, set `PAYPAL_DEMO_MODE=1`. That mode is ignored once PayPal keys are present.
+
+```bash
+npx prisma migrate deploy
 npx prisma generate
-npx prisma db push
+npm run seed:paypal-ai
 npm run start:dev
 ```
 
-SQL files, including migration SQL, were deliberately excluded. `prisma db push` is only for a fresh disposable local database; do not use it on production. Existing migration folders are not a deployable migration history in this snapshot.
+The seed prints two logins. The password is `DemoTrade123!`.
 
-### 3. Admin
+- `paypal-demo-owner@bybata.test` lists a MacBook.
+- `paypal-demo-bidder@bybata.test` offers a paperback set for it.
 
-In another terminal:
+## Run the app
 
-```sh
-cd apps/admin
-cp .env.example .env.local
-npm ci
-npm run dev
+From the repo root, point the app at the API and run Flutter:
+
+```bash
+flutter run
 ```
 
-The admin runs at `http://localhost:3001`. Use a newly created local test account and grant it an administrative role only in the disposable local database.
+Sign in as the bidder, open the offer, and tap **Even this trade**. Sign in as the owner on another session and accept the same amount. The bidder pays with PayPal. Cancel the trade, reject the offer, or send a dispute to refund a captured top-up. The trade screen shows **Refunded** after PayPal confirms it.
 
-### 4. Flutter
+## Hosted demo
 
-```sh
-flutter pub get
-flutter run -d chrome --web-port=8080 --dart-define=API_BASE_URL=http://localhost:3000
+Deploy `apps/api` to Railway (or any host) and set these server variables. Do not put the values in git.
+
+- `DATABASE_URL`
+- `PAYPAL_CLIENT_ID`
+- `PAYPAL_CLIENT_SECRET`
+- `PAYPAL_ENV=sandbox`
+- `PAYPAL_WEBHOOK_ID`
+- `OPENAI_API_KEY` (optional)
+- `API_PUBLIC_URL` as the public API origin, so PayPal can redirect back to `/v1/trade-topups/paypal/return`
+
+Point the PayPal sandbox webhook at `https://<api-host>/v1/trade-topups/paypal/webhook` for `PAYMENT.CAPTURE.COMPLETED` and `PAYMENT.CAPTURE.REFUNDED`.
+
+## Demo video
+
+Record the under-3-minute walkthrough in [docs/DEMO-PAYPAL-AI.md](docs/DEMO-PAYPAL-AI.md). The shot list is the submission script. Upload that recording to YouTube when you submit.
+
+## Before a push
+
+```bash
+bash scripts/secrets-scan.sh
 ```
 
-For an Android emulator, use `http://10.0.2.2:3000`. For an iOS simulator, use `http://localhost:3000`. A physical device needs the development machine's reachable LAN address. Always pass `API_BASE_URL`, including release/profile builds, so inherited production defaults are not used.
-
-Firebase sign-in, messaging and Google Maps need a separate development project. Platform Firebase files and signing keys are intentionally absent. Create your own `google-services.json` and `GoogleService-Info.plist` locally, never commit them. Web Firebase settings are supplied using `--dart-define` entries for `FIREBASE_API_KEY`, `FIREBASE_AUTH_DOMAIN`, `FIREBASE_PROJECT_ID`, `FIREBASE_STORAGE_BUCKET`, `FIREBASE_MESSAGING_SENDER_ID`, `FIREBASE_APP_ID` and optionally `FIREBASE_MEASUREMENT_ID`. Android Maps reads the `GOOGLE_MAPS_API_KEY` environment variable at build time. Public client configuration is not a substitute for proper API restrictions and Firebase security rules.
-
-## PayPal and AI
-
-The API contains existing PayPal payment code and optional OpenAI-backed search. Use sandbox credentials only: `PAYPAL_ENV=sandbox`, `PAYPAL_CLIENT_ID`, `PAYPAL_CLIENT_SECRET` and, where the existing provider discovery expects it, the same value in `PAYPAL_SECRET`. Webhook verification also needs your sandbox `PAYPAL_WEBHOOK_ID` and a development webhook endpoint. Keep secrets on the server, never in Flutter compile-time defines or `NEXT_PUBLIC_*` variables. Enable `AI_INTENT_ENABLED` only when an isolated `OPENAI_API_KEY` is configured. Review event rules before describing any component as new work.
-
-## Security and publication
-
-The snapshot excludes original Git history, environment files other than new placeholder examples, signing material, database dumps, SQL, archives, dependency caches, build outputs and selected credential-bearing internal reports. Remaining hardcoded mobile API keys were replaced with build-time configuration. A clean automated secrets scan is not proof that every sensitive datum or licensing issue has been found. Rotate previously committed credentials and review the copy before publication. The original private production repository is not changed by this snapshot.
-
-## License
-
-MIT. Copyright (c) 2026 Maximusinfotech Services. Third-party dependencies and assets retain their respective licenses; verify redistribution rights before publication.
+The scan checks for pasted private-key blocks. The release keystore, database backup, and API env files stay in this private repo.

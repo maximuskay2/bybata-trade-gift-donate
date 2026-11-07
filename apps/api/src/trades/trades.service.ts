@@ -14,6 +14,7 @@ import { MediaService } from '../storage/media.service';
 import type { MediaDomain } from '../storage/media.service';
 import { KarmaService } from '../karma/karma.service';
 import { KarmaPointsConfigService } from '../karma/karma-points-config.service';
+import { TradeTopUpService } from '../trade-topup/trade-topup.service';
 import {
   applyListingGeoFilter,
   buildListingMetadataWithCoords,
@@ -35,6 +36,7 @@ export class TradesService {
     private media: MediaService,
     private karmaService: KarmaService,
     private karmaPointsConfig: KarmaPointsConfigService,
+    private topUps: TradeTopUpService,
     @Inject(CACHE_MANAGER) private cache: Cache,
   ) {}
 
@@ -686,7 +688,13 @@ export class TradesService {
     const trade = await this.prisma.trade.findUnique({ where: { id } });
     if (!trade) throw new NotFoundException('Trade not found');
     if (trade.ownerId !== currentUserId) throw new ForbiddenException('Only owner can cancel');
-    if (trade.status !== TradeStatus.OPEN && trade.status !== TradeStatus.DRAFT) throw new BadRequestException('Only open or draft trades can be cancelled');
+    if (
+      trade.status !== TradeStatus.OPEN &&
+      trade.status !== TradeStatus.DRAFT &&
+      trade.status !== TradeStatus.IN_OFFER
+    ) {
+      throw new BadRequestException('Only open, draft, or in-offer trades can be cancelled');
+    }
     const updated = await this.prisma.trade.update({ where: { id }, data: { status: TradeStatus.CANCELLED, cancelledAt: new Date() } });
     try {
       const owner = await this.prisma.user.findUnique({
@@ -720,7 +728,27 @@ export class TradesService {
       // Non-blocking
     }
     await this.bumpTradeListCacheGeneration();
+    await this.refundTopUps(id, 'trade_cancelled');
     return updated;
+  }
+
+  async disputeTrade(currentUserId: string, id: string, reason?: string) {
+    const trade = await this.prisma.trade.findUnique({
+      where: { id },
+      include: { offers: { select: { bidderId: true } } },
+    });
+    if (!trade) throw new NotFoundException('Trade not found');
+    const isBidder = trade.offers.some((offer) => offer.bidderId === currentUserId);
+    if (trade.ownerId !== currentUserId && !isBidder) {
+      throw new ForbiddenException('Only the people in this trade can dispute it');
+    }
+    const refunds = await this.refundTopUps(id, 'trade_disputed');
+    return {
+      ok: true,
+      tradeId: id,
+      reason: reason?.trim().slice(0, 500) || null,
+      refunds,
+    };
   }
 
   async deleteTrade(currentUserId: string, id: string) {
@@ -1595,6 +1623,7 @@ export class TradesService {
       // Non-blocking
     }
 
+    await this.refundTopUpsForOffer(offer.id, 'offer_rejected');
     return updated;
   }
 
@@ -1652,6 +1681,7 @@ export class TradesService {
       return result;
     });
 
+    await this.refundTopUpsForOffer(offer.id, 'offer_withdrawn');
     return updated;
   }
 
@@ -1710,7 +1740,28 @@ export class TradesService {
       // Touch offer so updatedAt reflects last activity (used for auto-withdraw after inactivity)
       this.prisma.tradeOffer.update({ where: { id: offerId }, data: {} }),
     ]);
+    if (messageType === MessageType.DISPUTE_REPORT) {
+      await this.refundTopUps(negotiation.tradeId, 'trade_disputed');
+    }
     return message;
+  }
+
+  private async refundTopUps(tradeId: string, reason: string) {
+    try {
+      return await this.topUps.refundCapturedForTrade(tradeId, reason);
+    } catch (error) {
+      this.logger.error(`Trade top-up refund failed for ${tradeId}: ${(error as Error).message}`);
+      throw error;
+    }
+  }
+
+  private async refundTopUpsForOffer(offerId: string, reason: string) {
+    try {
+      return await this.topUps.refundCapturedForOffer(offerId, reason);
+    } catch (error) {
+      this.logger.error(`Trade top-up refund failed for offer ${offerId}: ${(error as Error).message}`);
+      throw error;
+    }
   }
 
   private async ensureTrade(id: string) {

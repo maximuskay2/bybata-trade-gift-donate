@@ -21,7 +21,7 @@ export class OpenAiLlmClient extends LlmClient {
     }
 
     const timeoutMs = request.timeoutMs;
-    const model = (process.env.AI_INTENT_MODEL || 'gpt-4.1-mini').trim();
+    const model = (request.model || process.env.AI_INTENT_MODEL || 'gpt-4.1-mini').trim();
     const client = this.getClient(apiKey, timeoutMs);
     const started = Date.now();
 

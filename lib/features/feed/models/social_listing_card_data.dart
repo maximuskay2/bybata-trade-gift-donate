@@ -6,8 +6,8 @@ enum SocialListingModule { trade, gift, donation }
 enum BentoTileSize { hero, standard, compact }
 
 /// Card chrome for browse feeds — inset bento tiles, utility timeline cards,
-/// or edge-to-edge Instagram posts.
-enum SocialFeedLayout { bento, instagram, timeline }
+/// edge-to-edge Instagram posts, or the trade-centre product grid.
+enum SocialFeedLayout { bento, instagram, timeline, catalog }
 
 /// View-model for [SocialListingCard] — one unified bento card contract.
 class SocialListingCardData {

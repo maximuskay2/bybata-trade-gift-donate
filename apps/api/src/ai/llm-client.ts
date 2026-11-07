@@ -7,6 +7,8 @@ export interface LlmJsonRequest {
   userPrompt: string;
   timeoutMs: number;
   maxTokens?: number;
+  /** Overrides AI_INTENT_MODEL for this call. */
+  model?: string;
 }
 
 export interface LlmJsonResponse {

@@ -10,20 +10,17 @@ import '../../../core/theme/theme_extensions.dart';
 import '../../../core/utils/responsive_utils.dart';
 import '../../../core/utils/listing_delete_helper.dart';
 import '../../../core/utils/share_utils.dart';
-import '../../../core/widgets/collapsible_section.dart';
 import '../../../core/widgets/contextual_action_bar.dart';
 import '../../../core/widgets/creator_card.dart';
-import '../../../core/widgets/detail_card_grid.dart';
 import '../../../core/widgets/details_comments_collapsible.dart';
-import '../../../core/widgets/details_glass_controls.dart';
 import '../../../core/widgets/expandable_description.dart';
 import '../../../core/widgets/listing_media_view.dart';
-import '../../../core/widgets/metadata_badge.dart';
 import '../../../core/widgets/similar_items_section.dart';
 import '../../profile/screens/user_profile_screen.dart';
 import '../../profile/services/user_social_service.dart';
 import '../models/trade_models.dart' as trade_models;
 import '../providers/trade_backend_provider.dart';
+import '../widgets/even_trade_panel.dart';
 import 'trade_chat_screen.dart';
 import 'package:bybata/core/widgets/app_toast.dart';
 import 'package:bybata/core/navigation/guarded_navigator.dart';
@@ -47,7 +44,6 @@ class _TradeDetailsScreenState extends State<TradeDetailsScreen>
   bool _isLoadingSimilarTrades = false;
   bool _hasLoadedSimilarTrades = false;
 
-  List<String> _resolvedImageUrls = [];
   List<trade_models.Trade> _userActiveTrades = [];
   List<dynamic> _similarTrades = [];
 
@@ -181,8 +177,8 @@ class _TradeDetailsScreenState extends State<TradeDetailsScreen>
   }
 
   Future<void> _resolveTradeImages() async {
-    final urls = await _dataManager.resolveMediaUrls(widget.trade.images);
-    if (mounted) setState(() => _resolvedImageUrls = urls);
+    // Warm the media cache so the photo well can paint without a second fetch.
+    await _dataManager.resolveMediaUrls(widget.trade.images);
   }
 
   Future<void> _loadSimilarTrades() async {
@@ -236,141 +232,164 @@ class _TradeDetailsScreenState extends State<TradeDetailsScreen>
 
   @override
   Widget build(BuildContext context) {
-    final primaryColor = AppColors.primary;
     final hPad = context.horizontalPadding;
     final isAuthed = context.watch<AuthProvider>().isAuthenticated;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final canvas = isDark ? const Color(0xFF120E18) : const Color(0xFFF6F3FF);
+    final trade = widget.trade;
+    final photoHeight =
+        (MediaQuery.sizeOf(context).height * 0.42).clamp(300.0, 440.0);
 
     return Scaffold(
-      backgroundColor: context.pageBackground,
+      backgroundColor: canvas,
       body: Stack(
         children: [
-          SafeArea(
-            top: true,
-            bottom: false,
-            child: CustomScrollView(
-              physics: const BouncingScrollPhysics(),
-              slivers: [
-                _buildMediaSliverAppBar(primaryColor),
-                SliverToBoxAdapter(
-                  child: Padding(
-                    padding: EdgeInsets.symmetric(horizontal: hPad),
-                    child: combinedTransition(
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const SizedBox(height: 24),
-                          _buildTitleAndPrice(primaryColor),
-                          const SizedBox(height: 20),
-                          CreatorCard(
-                            userId: widget.trade.owner.id,
-                            name: widget.trade.owner.name,
-                            avatarUrl: widget.trade.owner.avatar,
-                            rating: widget.trade.owner.rating,
-                            isVerified: widget.trade.owner.isVerified,
-                            subtitle:
-                                '${widget.trade.owner.completedTrades} completed trades',
-                            showButtons: isAuthed,
-                            onViewProfile: isAuthed ? _viewOwnerProfile : null,
-                            onMessage: isAuthed ? _messageOwner : null,
-                            onSecondaryAction:
-                                isAuthed && !_isOwner ? _toggleOwnerFollow : null,
-                            secondaryButtonLabel:
-                                _isFollowing ? 'Following' : 'Follow',
+          CustomScrollView(
+            physics: const BouncingScrollPhysics(),
+            slivers: [
+              SliverAppBar(
+                pinned: true,
+                elevation: 0,
+                scrolledUnderElevation: 0,
+                backgroundColor: canvas,
+                foregroundColor: context.primaryText,
+                centerTitle: true,
+                title: const Text(
+                  'Trade',
+                  style: TextStyle(fontWeight: FontWeight.w800, fontSize: 18),
+                ),
+                leading: IconButton(
+                  tooltip: 'Back',
+                  icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 18),
+                  onPressed: () => Navigator.maybePop(context),
+                ),
+                actions: [
+                  IconButton(
+                    tooltip: 'Share',
+                    icon: const Icon(Icons.share_outlined),
+                    onPressed: () => ShareUtils.shareTrade(
+                      context,
+                      id: trade.id,
+                      title: trade.title,
+                    ),
+                  ),
+                ],
+              ),
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: EdgeInsets.symmetric(horizontal: hPad),
+                  child: combinedTransition(
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _buildPhotoWell(isDark, photoHeight),
+                        const SizedBox(height: 18),
+                        _buildHeadline(),
+                        if (trade.status == trade_models.TradeStatus.cancelled) ...[
+                          const SizedBox(height: 16),
+                          EvenTradePanel(
+                            tradeId: trade.id,
+                            tradeStatus: 'CANCELLED',
                           ),
-                          const SizedBox(height: 20),
-                          DetailCardGrid(
-                            items: [
-                              DetailCardItem(
-                                label: 'Condition',
-                                value: widget.trade.condition.displayText,
-                                icon: Icons.inventory_2_rounded,
-                              ),
-                              DetailCardItem(
-                                label: 'Pickup',
-                                value: widget.trade.allowPickup ? 'Yes' : 'No',
-                                icon: Icons.local_shipping_rounded,
-                              ),
-                              DetailCardItem(
-                                label: 'Negotiable',
-                                value: widget.trade.isNegotiable ? 'Yes' : 'No',
-                                icon: Icons.handshake_rounded,
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 20),
-                          CollapsibleSection(
-                            title: 'Description',
-                            leadingIcon: Icons.notes_rounded,
-                            initiallyExpanded: true,
-                            content: ExpandableDescription(
-                              description: widget.trade.description,
-                              maxLines: 4,
-                            ),
-                          ),
-                          if (widget.trade.interestedItems.isNotEmpty) ...[
-                            const SizedBox(height: 20),
-                            CollapsibleSection(
-                              title: 'Looking For',
-                              leadingIcon: Icons.search_rounded,
-                              initiallyExpanded: false,
-                              content: Wrap(
-                                spacing: 10,
-                                runSpacing: 10,
-                                children: widget.trade.interestedItems
-                                    .map((item) => MetadataBadge(label: item))
-                                    .toList(),
-                              ),
-                            ),
-                          ],
-                          const SizedBox(height: 20),
-                          DetailsCommentsCollapsible(
-                            itemId: widget.trade.id,
-                            itemType: 'TRADE',
-                            onLoadComments: () =>
-                                _dataManager.loadComments(limit: 50),
-                            onAddComment: _dataManager.addComment,
-                            onEditComment: _dataManager.updateComment,
-                          ),
-                          const SizedBox(height: 20),
-                          SimilarItemsSection(
-                            title: 'Similar Trades',
-                            isLoading: _isLoadingSimilarTrades,
-                            hasLoaded: _hasLoadedSimilarTrades,
-                            items: _similarTrades,
-                            onExpand: _loadSimilarTrades,
-                            emptyMessage: 'No similar trades found.',
-                            itemBuilder: (ctx, item, _) {
-                              final title = item is Map
-                                  ? item['title']?.toString() ?? 'Trade'
-                                  : 'Trade';
-                              final location = item is Map
-                                  ? item['location']?.toString() ?? 'Remote'
-                                  : 'Remote';
-                              return _SimilarTradeTile(
-                                title: title,
-                                location: location,
-                                onTap: () {
-                                  final id = item is Map
-                                      ? item['id']?.toString()
-                                      : null;
-                                  if (id != null && id.isNotEmpty) {
-                                    AppRoutes.navigateToTradeDetailsById(
-                                      context,
-                                      id,
-                                    );
-                                  }
-                                },
-                              );
-                            },
-                          ),
-                          const SizedBox(height: 120),
                         ],
-                      ),
+                        const SizedBox(height: 16),
+                        _buildFactWrap(),
+                        const SizedBox(height: 22),
+                        _sectionTitle('Listed by', AppColors.primary),
+                        const SizedBox(height: 10),
+                        CreatorCard(
+                          userId: trade.owner.id,
+                          name: trade.owner.name,
+                          avatarUrl: trade.owner.avatar,
+                          rating: trade.owner.rating,
+                          isVerified: trade.owner.isVerified,
+                          subtitle:
+                              '${trade.owner.completedTrades} completed trades',
+                          showButtons: isAuthed,
+                          onViewProfile: isAuthed ? _viewOwnerProfile : null,
+                          onMessage: isAuthed ? _messageOwner : null,
+                          onSecondaryAction:
+                              isAuthed && !_isOwner ? _toggleOwnerFollow : null,
+                          secondaryButtonLabel:
+                              _isFollowing ? 'Following' : 'Follow',
+                        ),
+                        if (trade.description.trim().isNotEmpty) ...[
+                          const SizedBox(height: 22),
+                          _sectionTitle('Description', const Color(0xFF42A5F5)),
+                          const SizedBox(height: 8),
+                          ExpandableDescription(
+                            description: trade.description,
+                            maxLines: 4,
+                            expandButtonText: 'Read More',
+                          ),
+                        ],
+                        if (trade.interestedItems.isNotEmpty) ...[
+                          const SizedBox(height: 22),
+                          _sectionTitle('Looking for', const Color(0xFFEC407A)),
+                          const SizedBox(height: 10),
+                          Wrap(
+                            spacing: 8,
+                            runSpacing: 8,
+                            children: trade.interestedItems
+                                .map(
+                                  (item) => _softPill(
+                                    item,
+                                    fill: const Color(0xFFFCE4EC),
+                                    ink: const Color(0xFFC2185B),
+                                  ),
+                                )
+                                .toList(),
+                          ),
+                        ],
+                        const SizedBox(height: 22),
+                        DetailsCommentsCollapsible(
+                          itemId: trade.id,
+                          itemType: 'TRADE',
+                          onLoadComments: () =>
+                              _dataManager.loadComments(limit: 50),
+                          onAddComment: _dataManager.addComment,
+                          onEditComment: _dataManager.updateComment,
+                        ),
+                        const SizedBox(height: 20),
+                        SimilarItemsSection(
+                          title: 'Similar Trades',
+                          isLoading: _isLoadingSimilarTrades,
+                          hasLoaded: _hasLoadedSimilarTrades,
+                          items: _similarTrades,
+                          onExpand: _loadSimilarTrades,
+                          emptyMessage: 'No similar trades found.',
+                          itemBuilder: (ctx, item, index) {
+                            final title = item is Map
+                                ? item['title']?.toString() ?? 'Trade'
+                                : 'Trade';
+                            final location = item is Map
+                                ? item['location']?.toString() ?? 'Remote'
+                                : 'Remote';
+                            return _SimilarTradeTile(
+                              title: title,
+                              location: location,
+                              toneIndex: index,
+                              onTap: () {
+                                final id = item is Map
+                                    ? item['id']?.toString()
+                                    : null;
+                                if (id != null && id.isNotEmpty) {
+                                  AppRoutes.navigateToTradeDetailsById(
+                                    context,
+                                    id,
+                                  );
+                                }
+                              },
+                            );
+                          },
+                        ),
+                        const SizedBox(height: 120),
+                      ],
                     ),
                   ),
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
           Positioned(
             bottom: 0,
@@ -383,62 +402,92 @@ class _TradeDetailsScreenState extends State<TradeDetailsScreen>
     );
   }
 
-  Widget _buildMediaSliverAppBar(Color primaryColor) {
-    final imagesToShow = _resolvedImageUrls.isNotEmpty
-        ? _resolvedImageUrls
-        : widget.trade.images;
-
-    return SliverAppBar(
-      expandedHeight: 380,
-      backgroundColor: context.pageBackground,
-      elevation: 0,
-      pinned: true,
-      stretch: true,
-      automaticallyImplyLeading: false,
-      leading: Padding(
-        padding: const EdgeInsets.all(8),
-        child: DetailsGlassIconButton(
-          icon: Icons.arrow_back_ios_new_rounded,
-          onTap: () => Navigator.maybePop(context),
+  Widget _buildPhotoWell(bool isDark, double height) {
+    final innerHeight = height - 20;
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(32),
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: isDark
+              ? const [
+                  Color(0xFF3A2A5C),
+                  Color(0xFF1A3348),
+                  Color(0xFF4A2033),
+                ]
+              : const [
+                  Color(0xFFEDE7F6),
+                  Color(0xFFFFF3D6),
+                  Color(0xFFE3F2FD),
+                  Color(0xFFFCE4EC),
+                ],
         ),
-      ),
-      actions: [
-        Padding(
-          padding: const EdgeInsets.all(8),
-          child: DetailsGlassIconButton(
-            icon: _isFavorited ? Icons.favorite : Icons.favorite_border,
-            color: _isFavorited ? Colors.red : null,
-            onTap: _toggleLike,
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.primary.withValues(alpha: isDark ? 0.28 : 0.16),
+            blurRadius: 24,
+            offset: const Offset(0, 12),
           ),
-        ),
-        Padding(
-          padding: const EdgeInsets.only(right: 16, top: 8, bottom: 8),
-          child: DetailsGlassIconButton(
-            icon: Icons.share,
-            onTap: () => ShareUtils.shareTrade(
-              context,
-              id: widget.trade.id,
-              title: widget.trade.title,
+        ],
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(10),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(24),
+          child: ColoredBox(
+            color: isDark ? const Color(0xFF1A1524) : Colors.white,
+            child: SizedBox(
+              height: innerHeight,
+              width: double.infinity,
+              child: ListingMediaView(
+                media: widget.trade.listingMedia,
+                heroTag: 'trade_${widget.trade.id}',
+                height: innerHeight,
+                fit: BoxFit.contain,
+                enableZoom: !widget.trade.listingMedia.isVideo,
+                openFullscreenOnTap: true,
+                videoMuted: false,
+                autoplayVideo: true,
+                showPageIndicator: true,
+              ),
             ),
           ),
-        ),
-      ],
-      flexibleSpace: FlexibleSpaceBar(
-        background: ListingMediaView(
-          media: widget.trade.listingMedia,
-          heroTag: 'trade_${widget.trade.id}',
-          height: 280,
-          enableZoom: !widget.trade.listingMedia.isVideo,
-          openFullscreenOnTap: true,
-          videoMuted: false,
-          autoplayVideo: true,
         ),
       ),
     );
   }
 
-  Widget _buildTitleAndPrice(Color primary) {
+  Widget _sectionTitle(String text, Color accent) {
+    return Row(
+      children: [
+        Container(
+          width: 4,
+          height: 16,
+          decoration: BoxDecoration(
+            color: accent,
+            borderRadius: BorderRadius.circular(4),
+          ),
+        ),
+        const SizedBox(width: 8),
+        Text(
+          text,
+          style: TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.w800,
+            color: context.primaryText,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildHeadline() {
+    final trade = widget.trade;
     final muted = context.secondaryText;
+    final place = trade.location.trim().isNotEmpty ? trade.location.trim() : 'Remote';
+    final hasValue = trade.estimatedValue > 0;
+
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -447,54 +496,180 @@ class _TradeDetailsScreenState extends State<TradeDetailsScreen>
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                widget.trade.title,
+                trade.title,
                 style: TextStyle(
                   fontSize: 26,
-                  fontWeight: FontWeight.w900,
+                  height: 1.15,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: -0.4,
                   color: context.primaryText,
-                  letterSpacing: -0.5,
                 ),
               ),
               const SizedBox(height: 8),
-              Row(
-                children: [
-                  MetadataBadge.category(category: widget.trade.categoryName),
-                  const SizedBox(width: 10),
-                  Icon(Icons.location_on, size: 14, color: muted),
-                  Text(
-                    widget.trade.location.isNotEmpty
-                        ? ' ${widget.trade.location}'
-                        : ' Remote',
-                    style: TextStyle(color: muted, fontSize: 13),
-                  ),
-                ],
+              Text(
+                '${trade.categoryName} · $place',
+                style: TextStyle(
+                  color: muted,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
+              if (trade.owner.rating > 0) ...[
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    const Icon(
+                      Icons.star_rounded,
+                      size: 16,
+                      color: AppTheme.karmaColor,
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      trade.owner.rating.toStringAsFixed(1),
+                      style: TextStyle(
+                        fontWeight: FontWeight.w800,
+                        color: context.primaryText,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+              if (hasValue) ...[
+                const SizedBox(height: 14),
+                Text(
+                  'Est. value',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: muted,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  '\$${trade.estimatedValue}',
+                  style: TextStyle(
+                    fontSize: 28,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: -0.4,
+                    color: Theme.of(context).brightness == Brightness.dark
+                        ? AppColors.primaryLight
+                        : AppColors.primaryDark,
+                  ),
+                ),
+              ],
             ],
           ),
         ),
-        DetailsGlassCard(
-          child: Column(
-            children: [
-              Text(
-                'Est. Value',
-                style: TextStyle(
-                  fontSize: 10,
-                  color: muted,
-                  fontWeight: FontWeight.bold,
+        const SizedBox(width: 12),
+        _buildLikeButton(),
+      ],
+    );
+  }
+
+  Widget _buildLikeButton() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return Semantics(
+      button: true,
+      label: _isFavorited ? 'Unlike listing' : 'Like listing',
+      child: Column(
+        children: [
+          Material(
+            color: _isFavorited
+                ? const Color(0xFFFFE4EC)
+                : (isDark ? const Color(0xFF2A2438) : Colors.white),
+            elevation: _isFavorited ? 2 : 0,
+            shadowColor: const Color(0x55E91E63),
+            shape: const CircleBorder(),
+            child: InkWell(
+              customBorder: const CircleBorder(),
+              onTap: _toggleLike,
+              child: Padding(
+                padding: const EdgeInsets.all(12),
+                child: Icon(
+                  _isFavorited
+                      ? Icons.favorite_rounded
+                      : Icons.favorite_border_rounded,
+                  color: _isFavorited
+                      ? const Color(0xFFE91E63)
+                      : context.primaryText,
                 ),
               ),
-              Text(
-                '\$${widget.trade.estimatedValue}',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w900,
-                  color: primary,
-                ),
-              ),
-            ],
+            ),
           ),
+          if (_likeCount > 0) ...[
+            const SizedBox(height: 4),
+            Text(
+              '$_likeCount',
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
+                color: context.secondaryText,
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFactWrap() {
+    final trade = widget.trade;
+    return Wrap(
+      spacing: 8,
+      runSpacing: 8,
+      children: [
+        _softPill(
+          trade.condition.displayText,
+          icon: Icons.inventory_2_outlined,
+          fill: const Color(0xFFEDE7F6),
+          ink: AppColors.primaryDark,
+        ),
+        _softPill(
+          trade.allowPickup ? 'Pickup' : 'No pickup',
+          icon: Icons.place_outlined,
+          fill: const Color(0xFFE3F2FD),
+          ink: const Color(0xFF1565C0),
+        ),
+        _softPill(
+          trade.isNegotiable ? 'Negotiable' : 'Fixed swap',
+          icon: Icons.handshake_outlined,
+          fill: const Color(0xFFFFF3D6),
+          ink: const Color(0xFFB45309),
         ),
       ],
+    );
+  }
+
+  Widget _softPill(
+    String label, {
+    IconData? icon,
+    Color fill = Colors.white,
+    Color ink = AppColors.primaryDark,
+  }) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: isDark ? ink.withValues(alpha: 0.22) : fill,
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (icon != null) ...[
+            Icon(icon, size: 14, color: isDark ? Colors.white : ink),
+            const SizedBox(width: 6),
+          ],
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w700,
+              color: isDark ? Colors.white : ink,
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -504,6 +679,7 @@ class _TradeDetailsScreenState extends State<TradeDetailsScreen>
         final isOwner = auth.currentUser?.id == widget.trade.owner.id;
         if (!auth.isAuthenticated && !isOwner) {
           return ContextualActionBar(
+            accentColor: AppTheme.tradeColor,
             actions: [
               ContextualAction(
                 label: 'Sign in to Trade',
@@ -515,6 +691,7 @@ class _TradeDetailsScreenState extends State<TradeDetailsScreen>
           );
         }
         return ContextualActionBar(
+          accentColor: AppTheme.tradeColor,
           actions: isOwner
               ? [
                   if (ListingDeleteRules.canDeleteTrade(widget.trade))
@@ -579,26 +756,53 @@ class _TradeDetailsScreenState extends State<TradeDetailsScreen>
 class _SimilarTradeTile extends StatelessWidget {
   final String title;
   final String location;
+  final int toneIndex;
   final VoidCallback? onTap;
 
   const _SimilarTradeTile({
     required this.title,
     required this.location,
+    required this.toneIndex,
     this.onTap,
   });
 
+  static const _fills = <Color>[
+    Color(0xFFEDE7F6),
+    Color(0xFFFFF3D6),
+    Color(0xFFE3F2FD),
+    Color(0xFFE8F5E9),
+    Color(0xFFFCE4EC),
+  ];
+
+  static const _inks = <Color>[
+    AppColors.primaryDark,
+    Color(0xFFB45309),
+    Color(0xFF1565C0),
+    Color(0xFF2E7D32),
+    Color(0xFFC2185B),
+  ];
+
   @override
   Widget build(BuildContext context) {
+    final fill = _fills[toneIndex.abs() % _fills.length];
+    final ink = _inks[toneIndex.abs() % _inks.length];
+    final isDark = context.isDarkMode;
     return GestureDetector(
       onTap: onTap,
       child: Container(
         width: 180,
         padding: const EdgeInsets.all(14),
-        decoration: context.surfaceCardDecoration(radius: 14),
+        decoration: BoxDecoration(
+          color: isDark ? ink.withValues(alpha: 0.28) : fill,
+          borderRadius: BorderRadius.circular(18),
+        ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Icon(Icons.swap_horiz_rounded, color: AppColors.primary),
+            Icon(
+              Icons.swap_horiz_rounded,
+              color: isDark ? Colors.white : ink,
+            ),
             const SizedBox(height: 10),
             Text(
               title,
@@ -614,7 +818,11 @@ class _SimilarTradeTile extends StatelessWidget {
               location,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: TextStyle(color: context.secondaryText, fontSize: 12),
+              style: TextStyle(
+                color: isDark ? Colors.white70 : ink,
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
+              ),
             ),
           ],
         ),

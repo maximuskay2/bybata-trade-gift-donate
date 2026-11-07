@@ -110,6 +110,8 @@ model User {
   tradesModerated           Trade[]                   @relation("Trade_AdminModerator")
   giftsModerated            Gift[]                    @relation("Gift_AdminModerator")
   campaignsModerated        Campaign[]                @relation("Campaign_AdminModerator")
+  tradeTopUpsPaid           TradeTopUp[]              @relation("TradeTopUp_Payer")
+  tradeTopUpsReceived       TradeTopUp[]              @relation("TradeTopUp_Payee")
 }
 
 model UserFollow {
@@ -281,6 +283,7 @@ model Trade {
   adminModeratedAt      DateTime?
   adminModeratedById    String?
   adminModeratedBy      User?           @relation("Trade_AdminModerator", fields: [adminModeratedById], references: [id])
+  topUps                TradeTopUp[]
 }
 
 model WalletTransaction {
@@ -592,10 +595,46 @@ model TradeOffer {
   acceptedInTrade Trade?       @relation("Trade_AcceptedOffer")
   bidder          User         @relation("TradeOffer_Bidder", fields: [bidderId], references: [id])
   trade           Trade        @relation("Trade_Offers", fields: [tradeId], references: [id])
+  topUps          TradeTopUp[]
 
   @@index([offeredTradeId])
   @@index([parentOfferId])
   @@index([requestedTradeId])
+}
+
+/// Cash that evens an item-for-item trade. PayPal collects it and refunds it
+/// when the trade is cancelled or disputed. Gift and donate never use this.
+model TradeTopUp {
+  id             String           @id @default(cuid())
+  tradeId        String
+  offerId        String
+  payerId        String
+  payeeId        String
+  amount         Decimal          @db.Decimal(12, 2)
+  currency       String           @default("USD")
+  paypalOrderId  String?          @unique
+  captureId      String?
+  refundId       String?
+  status         TradeTopUpStatus @default(SUGGESTED)
+  aiReason       String?
+  confidence     Float?
+  source         String           @default("fallback")
+  payerAccepted  Boolean          @default(false)
+  payeeAccepted  Boolean          @default(false)
+  counteredById  String?
+  capped         Boolean          @default(false)
+  approveLink    String?
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+  offer          TradeOffer       @relation(fields: [offerId], references: [id], onDelete: Cascade)
+  payee          User             @relation("TradeTopUp_Payee", fields: [payeeId], references: [id])
+  payer          User             @relation("TradeTopUp_Payer", fields: [payerId], references: [id])
+  trade          Trade            @relation(fields: [tradeId], references: [id], onDelete: Cascade)
+
+  @@index([tradeId])
+  @@index([offerId])
+  @@index([payerId])
+  @@index([status])
 }
 
 model Negotiation {
@@ -1896,6 +1935,18 @@ enum OfferStatus {
   FINALIZED
   REJECTED
   WITHDRAWN
+}
+
+enum TradeTopUpStatus {
+  SUGGESTED
+  COUNTERED
+  DECLINED
+  ACCEPTED
+  ORDER_CREATED
+  CAPTURED
+  REFUND_PENDING
+  REFUNDED
+  FAILED
 }
 
 enum MessageType {

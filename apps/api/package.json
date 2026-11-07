@@ -4,7 +4,7 @@
   "description": "",
   "author": "",
   "private": true,
-  "license": "MIT",
+  "license": "UNLICENSED",
   "scripts": {
     "build": "nest build",
     "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
@@ -29,6 +29,7 @@
     "scenario:gift-flow": "ts-node -r dotenv/config scripts/seed_gift_flow_carol_alice.ts",
     "verify:single-pending-claim": "ts-node -r dotenv/config scripts/verify_single_pending_claim.ts",
     "seed:gifts-with-images": "ts-node -r dotenv/config scripts/seed_gifts_with_images.ts",
+    "seed:paypal-ai": "ts-node -r dotenv/config scripts/seed_paypal_ai_demo.ts",
     "purge:listings:dry-run": "ts-node -r dotenv/config scripts/purge-listing-data.ts --dry-run",
     "purge:listings": "ts-node -r dotenv/config scripts/purge-listing-data.ts --confirm PURGE_PRODUCTION",
     "media:backfill-variants": "ts-node -r dotenv/config scripts/backfill-listing-media-variants.ts",

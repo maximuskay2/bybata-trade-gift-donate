@@ -1,9 +1,10 @@
+import 'dart:io';
 import 'dart:ui';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:speech_to_text/speech_to_text.dart';
 
+import '../../../../core/platform/device_voice_input.dart';
 import '../../../../core/theme/borderless_input_decoration.dart';
 import '../../widgets/home_v2_tokens.dart';
 
@@ -27,65 +28,51 @@ class CommandInputPill extends StatefulWidget {
 }
 
 class _CommandInputPillState extends State<CommandInputPill> {
-  final SpeechToText _speech = SpeechToText();
   bool _listening = false;
-  bool _speechReady = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _initSpeech();
-  }
-
-  Future<void> _initSpeech() async {
-    try {
-      _speechReady = await _speech.initialize(
-        onStatus: (status) {
-          if (status == 'done' || status == 'notListening') {
-            if (mounted) setState(() => _listening = false);
-          }
-        },
-        onError: (_) {
-          if (mounted) setState(() => _listening = false);
-        },
-      );
-      if (mounted) setState(() {});
-    } catch (_) {
-      _speechReady = false;
-    }
-  }
+  TextEditingValue _dictationBase = const TextEditingValue();
 
   Future<void> _toggleListening() async {
-    if (!_speechReady) return;
     HapticFeedback.selectionClick();
-
     if (_listening) {
-      await _speech.stop();
+      await DeviceVoiceInput.stop();
       if (mounted) setState(() => _listening = false);
       return;
     }
 
-    final started = await _speech.listen(
-      onResult: (result) {
-        final text = result.recognizedWords.trim();
-        if (text.isEmpty) return;
-        widget.controller.text = text;
-        widget.controller.selection = TextSelection.collapsed(offset: text.length);
-        widget.onChanged?.call(text);
-        if (result.finalResult) {
-          widget.onSubmitted?.call();
-        }
-      },
-      listenOptions: SpeechListenOptions(listenMode: ListenMode.confirmation),
-    );
-    if (mounted) setState(() => _listening = started);
+    _dictationBase = widget.controller.value;
+    setState(() => _listening = true);
+    try {
+      await DeviceVoiceInput.start(onPartial: _applySpoken);
+    } on PlatformException catch (error) {
+      if (!mounted) return;
+      setState(() => _listening = false);
+      final message =
+          error.message ?? 'Voice typing is not available on this device.';
+      ScaffoldMessenger.maybeOf(
+        context,
+      )?.showSnackBar(SnackBar(content: Text(message)));
+      return;
+    } catch (_) {
+      if (mounted) setState(() => _listening = false);
+      return;
+    }
+    if (!mounted) return;
+    if (Platform.isAndroid) {
+      setState(() => _listening = false);
+      widget.focusNode.requestFocus();
+    }
+  }
+
+  void _applySpoken(String spoken) {
+    if (!mounted) return;
+    final next = DeviceVoiceInput.insertSpoken(_dictationBase, spoken);
+    widget.controller.value = next;
+    widget.onChanged?.call(next.text);
   }
 
   @override
   void dispose() {
-    if (_listening) {
-      _speech.stop();
-    }
+    DeviceVoiceInput.stop();
     super.dispose();
   }
 
@@ -149,24 +136,23 @@ class _CommandInputPillState extends State<CommandInputPill> {
                     ),
                   ),
                 ),
-                if (_speechReady)
-                  Semantics(
-                    button: true,
-                    label: _listening ? 'Stop voice input' : 'Voice search',
-                    child: IconButton(
-                      onPressed: _toggleListening,
-                      icon: Icon(
-                        _listening ? Icons.mic_rounded : Icons.mic_none_rounded,
-                        color: _listening
-                            ? Theme.of(context).colorScheme.primary
-                            : fg.withValues(alpha: 0.55),
-                      ),
-                      constraints: const BoxConstraints(
-                        minWidth: 44,
-                        minHeight: 44,
-                      ),
+                Semantics(
+                  button: true,
+                  label: _listening ? 'Stop voice typing' : 'Voice typing',
+                  child: IconButton(
+                    onPressed: _toggleListening,
+                    icon: Icon(
+                      _listening ? Icons.mic_rounded : Icons.mic_none_rounded,
+                      color: _listening
+                          ? Theme.of(context).colorScheme.primary
+                          : fg.withValues(alpha: 0.55),
+                    ),
+                    constraints: const BoxConstraints(
+                      minWidth: 44,
+                      minHeight: 44,
                     ),
                   ),
+                ),
               ],
             ),
           ),

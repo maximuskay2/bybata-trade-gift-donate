@@ -109,6 +109,61 @@ class _SocialFeedListState extends State<SocialFeedList> {
     ListingVideoHandoff.prepareDetailNavigation(videoKey);
   }
 
+  Widget _feedCard(SocialListingCardData item) {
+    return SocialListingCard(
+      key: ValueKey(
+        '${item.id}_${item.media.previewImageKey}_${item.media.videoKey}',
+      ),
+      data: item,
+      layout: widget.layout,
+      onCardTap: widget.onCardTap != null
+          ? () {
+              _prepareVideoHandoff(item);
+              widget.onCardTap!(item);
+            }
+          : null,
+      onPrimaryAction: widget.onPrimaryAction != null
+          ? () {
+              _prepareVideoHandoff(item);
+              widget.onPrimaryAction!(item);
+            }
+          : null,
+    );
+  }
+
+  Widget _buildCatalogGrid(BuildContext context) {
+    final scale = MediaQuery.textScalerOf(context)
+        .scale(1)
+        .clamp(1.0, 1.6)
+        .toDouble();
+    final ratio = (0.58 / scale).clamp(0.40, 0.62).toDouble();
+    return SliverPadding(
+      padding: const EdgeInsets.fromLTRB(16, 4, 16, 0),
+      sliver: SliverLayoutBuilder(
+        builder: (context, constraints) {
+          final width = constraints.crossAxisExtent;
+          final cols = width >= 980
+              ? 4
+              : width >= 680
+                  ? 3
+                  : 2;
+          return SliverGrid(
+            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: cols,
+              mainAxisSpacing: 12,
+              crossAxisSpacing: 10,
+              childAspectRatio: ratio,
+            ),
+            delegate: SliverChildBuilderDelegate(
+              (context, index) => _feedCard(widget.items[index]),
+              childCount: widget.items.length,
+            ),
+          );
+        },
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final child = CustomScrollView(
@@ -163,7 +218,20 @@ class _SocialFeedListState extends State<SocialFeedList> {
               ),
             ),
           )
-        else
+        else if (widget.layout == SocialFeedLayout.catalog) ...[
+          _buildCatalogGrid(context),
+          if (widget.hasMore)
+            const SliverToBoxAdapter(
+              child: Padding(
+                padding: EdgeInsets.symmetric(vertical: 24),
+                child: Center(
+                  child: BybataLoadingIndicator(
+                    size: BybataLoadingSize.compact,
+                  ),
+                ),
+              ),
+            ),
+        ] else
           SliverPadding(
             padding: widget.layout == SocialFeedLayout.instagram
                 ? EdgeInsets.zero
@@ -181,26 +249,7 @@ class _SocialFeedListState extends State<SocialFeedList> {
                       ),
                     );
                   }
-                  final item = widget.items[index];
-                  return SocialListingCard(
-                    key: ValueKey(
-                      '${item.id}_${item.media.previewImageKey}_${item.media.videoKey}',
-                    ),
-                    data: item,
-                    layout: widget.layout,
-                    onCardTap: widget.onCardTap != null
-                        ? () {
-                            _prepareVideoHandoff(item);
-                            widget.onCardTap!(item);
-                          }
-                        : null,
-                    onPrimaryAction: widget.onPrimaryAction != null
-                        ? () {
-                            _prepareVideoHandoff(item);
-                            widget.onPrimaryAction!(item);
-                          }
-                        : null,
-                  );
+                  return _feedCard(widget.items[index]);
                 },
                 childCount: widget.items.length + (widget.hasMore ? 1 : 0),
               ),

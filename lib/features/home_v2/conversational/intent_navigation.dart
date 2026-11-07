@@ -59,7 +59,8 @@ class IntentNavigation {
         break;
       case IntentModule.settings:
         if (AppRoutes.requireSignIn(context)) return;
-        GuardedNavigator.push(context,
+        GuardedNavigator.push(
+          context,
           MaterialPageRoute(builder: (_) => const SettingsLoaderScreen()),
         );
         break;
@@ -76,12 +77,16 @@ class IntentNavigation {
           GuardedNavigator.pushNamed(context, AppConstants.communityRoute);
         } else {
           if (AppRoutes.requireSignIn(context)) return;
-          GuardedNavigator.pushNamed(context, AppConstants.createCommunityRoute);
+          GuardedNavigator.pushNamed(
+            context,
+            AppConstants.createCommunityRoute,
+          );
         }
         break;
       case IntentModule.messages:
         if (AppRoutes.requireSignIn(context)) return;
-        GuardedNavigator.push(context,
+        GuardedNavigator.push(
+          context,
           MaterialPageRoute(
             builder: (_) => const ChatListScreen(showBackButton: true),
           ),
@@ -89,7 +94,8 @@ class IntentNavigation {
         break;
       case IntentModule.notifications:
         if (AppRoutes.requireSignIn(context)) return;
-        GuardedNavigator.push(context,
+        GuardedNavigator.push(
+          context,
           MaterialPageRoute(builder: (_) => const NotificationsScreen()),
         );
         break;
@@ -104,7 +110,8 @@ class IntentNavigation {
 
   static void openAdvancedSearch(BuildContext context) {
     ConversationalAnalytics.backupSearchOpened();
-    GuardedNavigator.push(context,
+    GuardedNavigator.push(
+      context,
       MaterialPageRoute(builder: (_) => const SearchScreen()),
     );
   }
@@ -116,7 +123,8 @@ class IntentNavigation {
     IntentModule? module,
   }) {
     ConversationalAnalytics.backupSearchOpened();
-    GuardedNavigator.push(context,
+    GuardedNavigator.push(
+      context,
       MaterialPageRoute(
         builder: (_) => SearchScreen(
           initialQuery: query,
@@ -140,7 +148,8 @@ class IntentNavigation {
   }
 
   static void openExplore(BuildContext context) {
-    GuardedNavigator.push(context,
+    GuardedNavigator.push(
+      context,
       MaterialPageRoute(builder: (_) => const DiscoverScreen()),
     );
   }

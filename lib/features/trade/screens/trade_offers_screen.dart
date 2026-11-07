@@ -8,6 +8,7 @@ import 'package:provider/provider.dart';
 import '../providers/trade_backend_provider.dart';
 import '../../../core/providers/auth_provider.dart';
 import '../utils/trade_offers_loader.dart';
+import '../widgets/even_trade_panel.dart';
 import 'trade_chat_screen.dart';
 import 'package:bybata/core/widgets/app_toast.dart';
 import 'package:bybata/core/navigation/guarded_navigator.dart';
@@ -368,6 +369,14 @@ class _TradeOffersScreenState extends State<TradeOffersScreen>
                       decoration: BoxDecoration(color: Colors.grey[50], borderRadius: BorderRadius.circular(8)),
                       child: Text(offer.message, style: TextStyle(color: Colors.grey[700], fontStyle: FontStyle.italic)),
                     ),
+                  if (offer.isItemOffer) ...[
+                    const SizedBox(height: 16),
+                    EvenTradePanel(
+                      tradeId: offer.targetTrade.id,
+                      offerId: offer.id,
+                      tradeStatus: offer.targetTrade.status.backendValue,
+                    ),
+                  ],
                   const SizedBox(height: 16),
                   _buildActionButtons(offer, primaryColor),
                 ],
