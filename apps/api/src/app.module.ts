@@ -41,7 +41,15 @@ import { SharedModule } from './shared/shared.module';
 
 @Module({
   imports: [
-    ConfigModule.forRoot({ isGlobal: true, envFilePath: ['.env', '.env.local', 'prisma/.env'] }),
+    ConfigModule.forRoot({
+      isGlobal: true,
+      envFilePath: [
+        '.env',
+        '.env.local',
+        ...(process.env.NODE_ENV === 'production' ? [] : ['.env.development']),
+        'prisma/.env',
+      ],
+    }),
     ReferralsModule,
     SupportModule,
     // Global cache: Redis required for multi-million scale; memory is fallback only.

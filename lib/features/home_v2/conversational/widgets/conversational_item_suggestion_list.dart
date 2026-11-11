@@ -4,6 +4,7 @@ import '../../../../core/theme/app_theme.dart';
 import '../../../../core/widgets/cached_media_image.dart';
 import '../../../feed/models/social_listing_card_data.dart';
 import 'glass_surface.dart';
+import 'soft_reveal.dart';
 
 /// Compact listing rows shown while the user types on conversational home.
 class ConversationalItemSuggestionList extends StatelessWidget {
@@ -75,8 +76,13 @@ class ConversationalItemSuggestionList extends StatelessWidget {
             ),
           )
         else
-          ...items.map((item) {
-            return Padding(
+          ...items.asMap().entries.map((entry) {
+            final item = entry.value;
+            return SoftReveal(
+              key: ValueKey(item.id),
+              index: entry.key,
+              travel: 12,
+              child: Padding(
               padding: const EdgeInsets.only(bottom: 8),
               child: GlassSurface(
                 onTap: () => onItemTap(item),
@@ -124,6 +130,7 @@ class ConversationalItemSuggestionList extends StatelessWidget {
                   ],
                 ),
               ),
+            ),
             );
           }),
       ],

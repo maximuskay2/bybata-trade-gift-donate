@@ -1,118 +1,85 @@
-import 'dart:async';
-
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:video_player/video_player.dart';
 
 import '../../core/constants/app_constants.dart';
 import '../../core/theme/app_theme.dart';
-import '../../core/widgets/bybata_loading_indicator.dart';
+import '../../screens/splash/radiant_field.dart';
 import 'package:bybata/core/navigation/guarded_navigator.dart';
 
-/// Single-video onboarding. Previous multi-slide flow:
-/// [backups/onboarding_pre_video_20260605/onboarding_screen.dart]
+/// First-run welcome. The old onboard.mp4 is gone; this is the same radiant field as the splash.
 class OnboardingScreen extends StatefulWidget {
   const OnboardingScreen({super.key});
-
-  static const String videoAsset = 'assets/video/onboard.mp4';
 
   @override
   State<OnboardingScreen> createState() => _OnboardingScreenState();
 }
 
-class _OnboardingScreenState extends State<OnboardingScreen> {
-  VideoPlayerController? _controller;
-  bool _initializing = true;
-  String? _error;
+class _OnboardingScreenState extends State<OnboardingScreen>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _flow;
+  int _chapter = 0;
+
+  static const _chapters = [
+    _Chapter('Trade', 'Offer what you have. Take what you need.'),
+    _Chapter('Gift', 'Pass something on. Karma follows the giving.'),
+    _Chapter('Donate', 'Fund a cause and watch the number rise.'),
+  ];
 
   @override
   void initState() {
     super.initState();
-    _initVideo();
+    _flow = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 5200),
+    );
+    _flow.addListener(_advance);
   }
 
-  Future<void> _initVideo() async {
-    final controller = VideoPlayerController.asset(OnboardingScreen.videoAsset);
-    try {
-      await controller.initialize();
-      await controller.setLooping(true);
-      await controller.setVolume(0);
-      await controller.play();
-      if (!mounted) {
-        await controller.dispose();
-        return;
-      }
-      setState(() {
-        _controller = controller;
-        _initializing = false;
-      });
-    } catch (e) {
-      await controller.dispose();
-      if (!mounted) return;
-      setState(() {
-        _initializing = false;
-        _error = 'Could not load onboarding video';
-      });
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final reduce = MediaQuery.disableAnimationsOf(context);
+    if (reduce) {
+      _flow.stop();
+    } else if (!_flow.isAnimating) {
+      _flow.repeat();
     }
+  }
+
+  void _advance() {
+    if (!mounted) return;
+    final next = (_flow.value * _chapters.length).floor().clamp(0, _chapters.length - 1);
+    if (next != _chapter) setState(() => _chapter = next);
   }
 
   @override
   void dispose() {
-    unawaited(_releaseVideo());
+    _flow.removeListener(_advance);
+    _flow.dispose();
     super.dispose();
   }
 
-  Future<void> _releaseVideo() async {
-    final controller = _controller;
-    _controller = null;
-    if (controller == null) return;
-    try {
-      await controller.pause();
-      await controller.dispose();
-    } catch (_) {}
-  }
-
   Future<void> _completeOnboarding() async {
-    await _releaseVideo();
-    await _markOnboardingComplete();
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(AppConstants.onboardingCompletedKey, true);
     if (!mounted) return;
     GuardedNavigator.pushNamedAndRemoveUntil(context, '/', (route) => false);
   }
 
-  Future<void> _markOnboardingComplete() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool(AppConstants.onboardingCompletedKey, true);
-  }
-
   @override
   Widget build(BuildContext context) {
+    final chapter = _chapters[_chapter];
     return Scaffold(
-      backgroundColor: Colors.black,
+      backgroundColor: const Color(0xFF3A1768),
       body: Stack(
         fit: StackFit.expand,
         children: [
-          if (_controller != null && _controller!.value.isInitialized)
-            _OnboardVideoBackground(controller: _controller!)
-          else if (_initializing)
-            const ColoredBox(
-              color: Color(0xFF1a1a1a),
-              child: Center(child: BybataLoadingIndicator()),
-            )
-          else
-            ColoredBox(
-              color: const Color(0xFF1a1a1a),
-              child: Center(
-                child: Padding(
-                  padding: const EdgeInsets.all(32),
-                  child: Text(
-                    _error ?? 'Video unavailable',
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(color: Colors.white70),
-                  ),
-                ),
-              ),
+          AnimatedBuilder(
+            animation: _flow,
+            builder: (context, _) => CustomPaint(
+              painter: RadiantFieldPainter(t: _flow.value),
             ),
-          const _OnboardOverlay(),
+          ),
           SafeArea(
             child: Padding(
               padding: const EdgeInsets.fromLTRB(24, 16, 24, 28),
@@ -133,36 +100,56 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                     ),
                   ),
                   const Spacer(),
-                  Image.network(
-                    'https://mails.bybata.com/logomail.png',
-                    width: 72,
-                    height: 72,
-                    errorBuilder: (_, __, ___) => const Icon(
-                      Icons.apps,
-                      size: 72,
-                      color: Colors.white,
+                  ClipOval(
+                    child: Image.asset(
+                      'assets/animations/logo.png',
+                      width: 84,
+                      height: 84,
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, __, ___) => const Icon(
+                        Icons.auto_awesome_rounded,
+                        size: 72,
+                        color: Colors.white,
+                      ),
                     ),
                   ),
-                  const SizedBox(height: 20),
+                  const SizedBox(height: 22),
                   const Text(
                     'Welcome to ByBata',
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       color: Colors.white,
-                      fontSize: 28,
+                      fontSize: 30,
                       fontWeight: FontWeight.w900,
-                      letterSpacing: -0.5,
-                      height: 1.15,
+                      letterSpacing: -0.4,
                     ),
                   ),
-                  const SizedBox(height: 10),
-                  Text(
-                    'Trade, gift, and fund causes in one community.',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      color: Colors.white.withValues(alpha: 0.88),
-                      fontSize: 16,
-                      height: 1.45,
+                  const SizedBox(height: 18),
+                  AnimatedSwitcher(
+                    duration: const Duration(milliseconds: 420),
+                    child: Column(
+                      key: ValueKey(chapter.title),
+                      children: [
+                        Text(
+                          chapter.title,
+                          style: const TextStyle(
+                            color: Color(0xFFE8C872),
+                            fontSize: 18,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: 1.2,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          chapter.line,
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            color: Colors.white.withValues(alpha: 0.9),
+                            fontSize: 16,
+                            height: 1.45,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                   const SizedBox(height: 28),
@@ -180,52 +167,10 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   }
 }
 
-class _OnboardVideoBackground extends StatelessWidget {
-  final VideoPlayerController controller;
-
-  const _OnboardVideoBackground({required this.controller});
-
-  @override
-  Widget build(BuildContext context) {
-    return ColoredBox(
-      color: Colors.black,
-      child: FittedBox(
-        fit: BoxFit.cover,
-        clipBehavior: Clip.hardEdge,
-        child: SizedBox(
-          width: controller.value.size.width,
-          height: controller.value.size.height,
-          child: VideoPlayer(controller),
-        ),
-      ),
-    );
-  }
-}
-
-class _OnboardOverlay extends StatelessWidget {
-  const _OnboardOverlay();
-
-  @override
-  Widget build(BuildContext context) {
-    return IgnorePointer(
-      child: DecoratedBox(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [
-              Colors.black.withValues(alpha: 0.35),
-              Colors.black.withValues(alpha: 0.15),
-              Colors.black.withValues(alpha: 0.55),
-              Colors.black.withValues(alpha: 0.82),
-            ],
-            stops: const [0, 0.35, 0.72, 1],
-          ),
-        ),
-        child: const SizedBox.expand(),
-      ),
-    );
-  }
+class _Chapter {
+  final String title;
+  final String line;
+  const _Chapter(this.title, this.line);
 }
 
 class ThreeDButton extends StatefulWidget {
@@ -263,9 +208,9 @@ class _ThreeDButtonState extends State<ThreeDButton> {
           boxShadow: _isPressed
               ? []
               : [
-                  BoxShadow(
-                    color: const Color(0xFF5a189a),
-                    offset: const Offset(0, 6),
+                  const BoxShadow(
+                    color: Color(0xFF5A189A),
+                    offset: Offset(0, 6),
                     blurRadius: 0,
                   ),
                 ],

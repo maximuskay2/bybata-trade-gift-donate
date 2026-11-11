@@ -1,4 +1,5 @@
 import com.android.build.gradle.LibraryExtension
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 
 plugins {
@@ -22,6 +23,8 @@ subprojects {
     val newSubprojectBuildDir: Directory = newBuildDir.dir(project.name)
     project.layout.buildDirectory.value(newSubprojectBuildDir)
 }
+
+/** Older plugins that still need Java 8. Everything else prefers JVM 17. */
 val legacyJvmTargets = setOf(
     "qr_code_scanner",
     "share_plus",
@@ -30,32 +33,56 @@ val legacyJvmTargets = setOf(
     "sign_in_with_apple",
     "video_compress",
 )
-val jvm17Targets = setOf(
-    "record_android",
-    "stripe_android",
-    "webview_flutter_android",
-    "video_player_android",
-)
 
-fun LibraryExtension.applyJvm(java: JavaVersion) {
-    compileOptions {
-        sourceCompatibility = java
-        targetCompatibility = java
+fun Project.preferredJava(): JavaVersion =
+    if (legacyJvmTargets.contains(name)) JavaVersion.VERSION_1_8 else JavaVersion.VERSION_17
+
+fun jvmTargetFor(java: JavaVersion): JvmTarget =
+    when (java) {
+        JavaVersion.VERSION_1_8 -> JvmTarget.JVM_1_8
+        JavaVersion.VERSION_11 -> JvmTarget.JVM_11
+        else -> JvmTarget.JVM_17
+    }
+
+/** AGP 8.11+ rejects package= in library manifests; keep namespace in Gradle instead. */
+fun stripManifestPackage(project: Project) {
+    val manifest = project.file("src/main/AndroidManifest.xml")
+    if (!manifest.isFile) return
+    val original = manifest.readText()
+    val updated = original.replace(Regex("""\s*package="[^"]*""""), "")
+    if (updated != original) {
+        manifest.writeText(updated)
+    }
+}
+
+/**
+ * Force Kotlin's jvmTarget to match the module's Java targetCompatibility.
+ * Reading compileOptions is safe after finalization; writing it is not.
+ */
+fun Project.alignKotlinJvm() {
+    tasks.withType<KotlinCompile>().configureEach {
+        val androidExt = extensions.findByName("android") as? LibraryExtension
+        val java =
+            try {
+                androidExt?.compileOptions?.targetCompatibility
+            } catch (_: Exception) {
+                null
+            } ?: preferredJava()
+        compilerOptions {
+            jvmTarget.set(jvmTargetFor(java))
+        }
     }
 }
 
 subprojects {
     project.evaluationDependsOn(":app")
+
     plugins.withId("org.jetbrains.kotlin.android") {
-        tasks.withType<KotlinCompile>().configureEach {
-            kotlinOptions.jvmTarget = when {
-                legacyJvmTargets.contains(project.name) -> "1.8"
-                jvm17Targets.contains(project.name) -> "17"
-                else -> "11"
-            }
-        }
+        alignKotlinJvm()
     }
+
     plugins.withId("com.android.library") {
+        stripManifestPackage(project)
         val androidExt = extensions.findByName("android")
         if (androidExt is LibraryExtension) {
             if (androidExt.namespace == null || androidExt.namespace!!.isBlank()) {
@@ -63,15 +90,18 @@ subprojects {
                 androidExt.namespace = "com.bybata.$safeName"
             }
             androidExt.compileSdk = 34
-            when {
-                legacyJvmTargets.contains(project.name) ->
-                    androidExt.applyJvm(JavaVersion.VERSION_1_8)
-                jvm17Targets.contains(project.name) ->
-                    androidExt.applyJvm(JavaVersion.VERSION_17)
-                else ->
-                    androidExt.applyJvm(JavaVersion.VERSION_11)
+            // Prefer JVM 17 early. If AGP already finalized this, skip and
+            // let alignKotlinJvm() follow whatever Java value stuck.
+            try {
+                androidExt.compileOptions {
+                    sourceCompatibility = preferredJava()
+                    targetCompatibility = preferredJava()
+                }
+            } catch (_: IllegalStateException) {
+                // finalized — leave Java alone
             }
         }
+        alignKotlinJvm()
     }
 }
 

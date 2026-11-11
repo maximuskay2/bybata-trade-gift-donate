@@ -45,68 +45,26 @@ class TradeOffersLoader {
     }
 
     final aggregated = <TradeOffer>[];
-
-    final receivedTradeStatuses = ['OPEN', 'IN_OFFER'];
-    final tradesForReceived = <Map<String, dynamic>>[];
-    for (final status in receivedTradeStatuses) {
-      try {
-        final res = await backend.listMyTrades(
-          ownerId: userId,
-          status: status,
-          page: 1,
-          size: 50,
-          forceRefresh: true,
-        );
-        final items = (res['items'] as List?) ?? [];
-        for (final t in items) {
-          if (t is Map) {
-            tradesForReceived.add(Map<String, dynamic>.from(t));
-          }
-        }
-      } catch (_) {}
-    }
-
-    final seenTradeIds = <String>{};
-    for (final trade in tradesForReceived) {
-      final tradeId = trade['id']?.toString() ?? '';
-      if (tradeId.isEmpty || seenTradeIds.contains(tradeId)) continue;
-      seenTradeIds.add(tradeId);
-      try {
-        final list = await backend.listOffers(tradeId);
-        for (final o in list) {
-          final bidderId = (o['bidderId'] ?? '').toString();
-          if (bidderId == userId) continue;
-          if (!isOfferVisible(o['status'])) continue;
-          final offer = tryParseOffer(o, trade);
-          if (offer != null) aggregated.add(offer);
-        }
-      } catch (_) {}
-    }
-
     try {
-      final allTradesRes =
-          await backend.listMyTrades(ownerId: '', page: 1, size: 50, forceRefresh: true);
-      final allTrades = (allTradesRes['items'] as List?) ?? [];
-      for (final raw in allTrades) {
+      final res = await backend.listMyOffers(page: 1, size: 50);
+      final items = (res['items'] as List?) ?? [];
+      for (final raw in items) {
         if (raw is! Map) continue;
-        final trade = Map<String, dynamic>.from(raw);
-        final tradeId = trade['id']?.toString() ?? '';
-        final ownerId =
-            (trade['owner'] is Map) ? (trade['owner']['id']?.toString() ?? '') : '';
-        final tradeStatus = (trade['status'] ?? '').toString().toUpperCase();
-        if (tradeId.isEmpty || ownerId == userId) continue;
-        if (tradeStatus == 'CLOSED' || tradeStatus == 'CANCELLED') continue;
-
-        try {
-          final list = await backend.listOffers(tradeId);
-          for (final o in list) {
-            final bidderId = (o['bidderId'] ?? '').toString();
-            if (bidderId != userId) continue;
-            if (!isOfferVisible(o['status'])) continue;
-            final offer = tryParseOffer(o, trade);
-            if (offer != null) aggregated.add(offer);
-          }
-        } catch (_) {}
+        final o = Map<String, dynamic>.from(raw);
+        if (!isOfferVisible(o['status'])) continue;
+        final trade = o['trade'] is Map
+            ? Map<String, dynamic>.from(o['trade'] as Map)
+            : <String, dynamic>{
+                'id': o['tradeId'],
+                'title': o['tradeTitle'] ?? 'Trade',
+                'ownerId': o['ownerId'],
+                'owner': {
+                  'id': o['ownerId'],
+                  'profile': {'displayName': o['ownerName']},
+                },
+              };
+        final offer = tryParseOffer(o, trade);
+        if (offer != null) aggregated.add(offer);
       }
     } catch (_) {}
 
@@ -118,17 +76,16 @@ class TradeOffersLoader {
     TradeBackendProvider backend,
     String tradeId,
   ) async {
-    final tradeJson = await backend.getTrade(tradeId);
-    if (tradeJson == null) return [];
-
-    final list = await backend.listOffers(tradeId);
-    final offers = <TradeOffer>[];
-    for (final o in list) {
-      if (!isOfferVisible(o['status'])) continue;
-      final offer = tryParseOffer(o, tradeJson);
-      if (offer != null) offers.add(offer);
-    }
-    offers.sort((a, b) => b.createdAt.compareTo(a.createdAt));
-    return offers;
+    final aggregated = <TradeOffer>[];
+    try {
+      final list = await backend.listOffers(tradeId);
+      final trade = <String, dynamic>{'id': tradeId};
+      for (final o in list) {
+        if (!isOfferVisible(o['status'])) continue;
+        final offer = tryParseOffer(o, trade);
+        if (offer != null) aggregated.add(offer);
+      }
+    } catch (_) {}
+    return aggregated;
   }
 }

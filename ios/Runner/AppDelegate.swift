@@ -6,6 +6,7 @@ import FirebaseCore
 import FirebaseMessaging
 import Speech
 import AVFoundation
+import CoreMotion
 
 @main
 @objc class AppDelegate: FlutterAppDelegate, FlutterImplicitEngineDelegate, MessagingDelegate {
@@ -59,6 +60,20 @@ import AVFoundation
       } else if call.method == "stop" {
         self.deviceVoice.stop()
         result(nil)
+      } else {
+        result(FlutterMethodNotImplemented)
+      }
+    })
+
+    let heroClip = FlutterMethodChannel(
+      name: "bybata/hero_clip",
+      binaryMessenger: engineBridge.applicationRegistrar.messenger()
+    )
+    heroClip.setMethodCallHandler({ (call: FlutterMethodCall, result: @escaping FlutterResult) in
+      if call.method == "motion" {
+        result(HeroClipMotion.shared.sample())
+      } else if call.method == "crop" {
+        HeroClipCrop.export(call: call, result: result)
       } else {
         result(FlutterMethodNotImplemented)
       }
@@ -222,6 +237,92 @@ final class DeviceVoiceCapture: NSObject, FlutterStreamHandler {
     }
     current?.cancel()
     try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
+  }
+}
+
+/// Phone motion in m/s², from user acceleration, so a whip can stop a clip.
+final class HeroClipMotion {
+  static let shared = HeroClipMotion()
+  private let manager = CMMotionManager()
+  private var magnitude: Double = 0
+
+  func sample() -> Double {
+    if manager.isDeviceMotionAvailable && !manager.isDeviceMotionActive {
+      manager.deviceMotionUpdateInterval = 0.1
+      manager.startDeviceMotionUpdates(to: .main) { motion, _ in
+        guard let accel = motion?.userAcceleration else { return }
+        let g = accel.x * accel.x + accel.y * accel.y + accel.z * accel.z
+        self.magnitude = (g * 9.8 * 9.8).squareRoot()
+      }
+    }
+    return magnitude
+  }
+}
+
+/// Crops the recorded clip to the smoothed subject box.
+final class HeroClipCrop {
+  static func export(call: FlutterMethodCall, result: @escaping FlutterResult) {
+    guard let args = call.arguments as? [String: Any],
+          let source = args["source"] as? String,
+          let dest = args["dest"] as? String,
+          let left = args["left"] as? Double,
+          let top = args["top"] as? Double,
+          let width = args["width"] as? Double,
+          let height = args["height"] as? Double else {
+      result(FlutterError(code: "args", message: "Missing crop arguments", details: nil))
+      return
+    }
+    let asset = AVURLAsset(url: URL(fileURLWithPath: source))
+    guard let track = asset.tracks(withMediaType: .video).first else {
+      result(FlutterError(code: "video", message: "No video track", details: nil))
+      return
+    }
+    let transformed = track.naturalSize.applying(track.preferredTransform)
+    let display = CGSize(width: abs(transformed.width), height: abs(transformed.height))
+    let crop = CGRect(
+      x: display.width * CGFloat(left),
+      y: display.height * CGFloat(top),
+      width: max(2, display.width * CGFloat(width)),
+      height: max(2, display.height * CGFloat(height))
+    )
+    let even = CGSize(
+      width: max(2, floor(crop.width / 2) * 2),
+      height: max(2, floor(crop.height / 2) * 2)
+    )
+    let composition = AVMutableVideoComposition()
+    composition.renderSize = even
+    composition.frameDuration = CMTime(value: 1, timescale: 30)
+    let instruction = AVMutableVideoCompositionInstruction()
+    instruction.timeRange = CMTimeRange(start: .zero, duration: asset.duration)
+    let layer = AVMutableVideoCompositionLayerInstruction(assetTrack: track)
+    var transform = track.preferredTransform
+    transform = transform.translatedBy(x: -crop.origin.x, y: -crop.origin.y)
+    layer.setTransform(transform, at: .zero)
+    instruction.layerInstructions = [layer]
+    composition.instructions = [instruction]
+
+    let output = URL(fileURLWithPath: dest)
+    try? FileManager.default.removeItem(at: output)
+    guard let session = AVAssetExportSession(asset: asset, presetName: AVAssetExportPreset1280x720) else {
+      result(FlutterError(code: "export", message: "Could not export the clip", details: nil))
+      return
+    }
+    session.outputURL = output
+    session.outputFileType = .mp4
+    session.videoComposition = composition
+    session.exportAsynchronously {
+      DispatchQueue.main.async {
+        if session.status == .completed {
+          result(dest)
+        } else {
+          result(FlutterError(
+            code: "export",
+            message: session.error?.localizedDescription ?? "Could not crop the clip",
+            details: nil
+          ))
+        }
+      }
+    }
   }
 }
 

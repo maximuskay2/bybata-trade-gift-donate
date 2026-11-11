@@ -28,7 +28,7 @@ class MainActivity : FlutterFragmentActivity() {
             return@registerForActivityResult
         }
         val matches = activityResult.data?.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS)
-        pending.success(matches?.firstOrNull)
+        pending.success(matches?.firstOrNull())
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -60,6 +60,11 @@ class MainActivity : FlutterFragmentActivity() {
                 } else {
                     result.notImplemented()
                 }
+            }
+        val heroClip = HeroClipChannel(this)
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "bybata/hero_clip")
+            .setMethodCallHandler { call, result ->
+                heroClip.handle(call, result)
             }
     }
 

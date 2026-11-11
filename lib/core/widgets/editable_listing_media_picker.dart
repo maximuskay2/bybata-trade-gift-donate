@@ -4,9 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 
 import '../constants/listing_media_constants.dart';
+import '../media/listing_capture_flow.dart';
 import '../models/listing_media.dart';
-import '../utils/image_crop_utils.dart';
-import '../utils/image_resize_utils.dart';
 import '../utils/permissions_helper.dart';
 import '../utils/video_processing_utils.dart';
 import 'cached_media_image.dart';
@@ -93,20 +92,30 @@ class _EditableListingMediaPickerState extends State<EditableListingMediaPicker>
     );
     if (source == null || !mounted) return;
 
-    final files = <File>[];
-    if (!await PermissionsHelper.requestCameraWithFallback(
-      context,
-      purpose: 'take a photo',
-    )) {
-      return;
+    File? accepted;
+    if (source == ImageSource.gallery) {
+      final picked = await _picker.pickImage(source: ImageSource.gallery, imageQuality: 92);
+      if (picked == null || !mounted) return;
+      accepted = await ListingCaptureFlow.acceptGalleryPhoto(
+        context,
+        sourcePath: picked.path,
+        stageColor: widget.accentColor,
+      );
+    } else {
+      if (!await PermissionsHelper.requestCameraWithFallback(
+        context,
+        purpose: 'take a photo',
+      )) {
+        return;
+      }
+      if (!mounted) return;
+      accepted = await ListingCaptureFlow.takePhoto(
+        context,
+        stageColor: widget.accentColor,
+      );
     }
-    final file = await _picker.pickImage(source: ImageSource.camera, imageQuality: 90);
-    if (file == null || !mounted) return;
-    final cropped = await ImageCropUtils.cropToFeedWidescreen(context, File(file.path));
-    if (cropped == null || !mounted) return;
-    files.add(await ImageResizeUtils.resizeToFeedAspectFile(cropped));
-
-    if (files.isEmpty || !mounted) return;
+    if (accepted == null || !mounted) return;
+    final files = <File>[accepted];
     _emit(_state.copyWith(
       mediaType: ListingMediaType.image,
       newImageFiles: [..._state.newImageFiles, ...files],
@@ -125,11 +134,7 @@ class _EditableListingMediaPickerState extends State<EditableListingMediaPicker>
     )) {
       return;
     }
-    final file = await _picker.pickVideo(
-      source: widget.cameraOnly ? ImageSource.camera : ImageSource.gallery,
-      maxDuration: VideoProcessingUtils.maxDuration,
-    );
-    if (file == null || !mounted) return;
+    if (!mounted) return;
 
     setState(() {
       _processingVideo = true;
@@ -137,25 +142,46 @@ class _EditableListingMediaPickerState extends State<EditableListingMediaPicker>
       _videoSizeLabel = null;
     });
 
-    final processed = await VideoProcessingUtils.prepareForUpload(
-      file.path,
-      onProgress: (p) {
-        if (mounted) setState(() => _videoProgress = p);
-      },
-    );
+    final ProcessedVideoResult? processed;
+    if (widget.cameraOnly) {
+      processed = await ListingCaptureFlow.takeVideo(
+        context,
+        stageColor: widget.accentColor,
+        onProgress: (p) {
+          if (mounted) setState(() => _videoProgress = p);
+        },
+      );
+    } else {
+      final file = await _picker.pickVideo(
+        source: ImageSource.gallery,
+        maxDuration: ListingMediaConstants.heroClipMax,
+      );
+      if (file == null || !mounted) {
+        setState(() => _processingVideo = false);
+        return;
+      }
+      processed = await ListingCaptureFlow.acceptGalleryVideo(
+        context,
+        sourcePath: file.path,
+        stageColor: widget.accentColor,
+        onProgress: (p) {
+          if (mounted) setState(() => _videoProgress = p);
+        },
+      );
+    }
 
     if (!mounted) return;
-    if (processed == null) {
+    final ready = processed;
+    if (ready == null) {
       setState(() => _processingVideo = false);
-      _toast('Videos must be 1 minute or shorter.');
       return;
     }
 
     setState(() => _processingVideo = false);
     _emit(_state.copyWith(
       mediaType: ListingMediaType.video,
-      newVideoPath: processed.videoPath,
-      newVideoThumbnailPath: processed.thumbnailPath,
+      newVideoPath: ready.videoPath,
+      newVideoThumbnailPath: ready.thumbnailPath,
       clearImages: true,
       clearVideo: true,
       keptVideoKey: null,
@@ -163,8 +189,8 @@ class _EditableListingMediaPickerState extends State<EditableListingMediaPicker>
     ));
     setState(() {
       _videoSizeLabel =
-          '${VideoProcessingUtils.formatSize(processed.compressedBytes)}'
-          ' (was ${VideoProcessingUtils.formatSize(processed.originalBytes)})';
+          '${VideoProcessingUtils.formatSize(ready.compressedBytes)}'
+          ' (was ${VideoProcessingUtils.formatSize(ready.originalBytes)})';
     });
   }
 
@@ -313,7 +339,7 @@ class _EditableListingMediaPickerState extends State<EditableListingMediaPicker>
               icon: Icons.videocam_rounded,
               label: 'Record video',
               subtitle:
-                  'One video · ${ListingMediaConstants.maxVideoDurationLabel} · auto-compressed',
+                  'One ${ListingMediaConstants.heroClipMax.inSeconds} second video. The poster is cut out.',
               onPressed: _pickVideo,
             )
           else ...[

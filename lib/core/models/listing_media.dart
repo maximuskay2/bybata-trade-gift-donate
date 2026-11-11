@@ -130,6 +130,14 @@ class ListingMediaDraft {
       mediaType == ListingMediaType.video
           ? videoPath == null || videoPath!.isEmpty
           : imagePaths.isEmpty;
+
+  /// The still that flies to the center of an empty create stage.
+  String? get heroPath {
+    final thumb = videoThumbnailPath;
+    if (thumb != null && thumb.isNotEmpty) return thumb;
+    if (imagePaths.isNotEmpty) return imagePaths.first;
+    return null;
+  }
 }
 
 /// Edit-flow media state: kept remote keys + new local picks (photos or one video).

@@ -10,6 +10,7 @@ import '../../../core/utils/listing_delete_helper.dart';
 import '../../../core/utils/media_utils.dart';
 import '../../../core/utils/offline_json_cache.dart';
 import '../../trade/api/trade_api.dart';
+import '../services/trade_topup_events.dart';
 import '../../../core/widgets/listing_creation_progress.dart';
 import '../../storage/repository/storage_repository.dart';
 import '../../../core/models/listing_media.dart';
@@ -38,6 +39,8 @@ class TradeBackendProvider extends ChangeNotifier {
   String? get duplicateOfferId => _duplicateOfferId;
   String? _lastCreatedTradeId;
   String? get lastCreatedTradeId => _lastCreatedTradeId;
+  String? _lastCreatedOfferId;
+  String? get lastCreatedOfferId => _lastCreatedOfferId;
   int get uploadTotal => _uploadTotal;
   int get uploadCompleted => _uploadCompleted;
   double get uploadProgress => _uploadProgress;
@@ -151,6 +154,12 @@ class TradeBackendProvider extends ChangeNotifier {
     }
   }
 
+  void _emitOfferChanged(String offerId) {
+    TradeTopUpEvents.instance.emit(
+      TradeTopUpEvent(TradeTopUpEventKind.tradeChanged, offerId: offerId),
+    );
+  }
+
   Future<bool> cancelTrade(String tradeId) async {
     _busy = true;
     _error = null;
@@ -159,6 +168,11 @@ class TradeBackendProvider extends ChangeNotifier {
       await _ensureClient();
       await _tradeApi!.cancelTrade(tradeId);
       invalidateMyTradesCache();
+      TradeTopUpEvents.instance.emit(TradeTopUpEvent(
+        TradeTopUpEventKind.tradeChanged,
+        tradeId: tradeId,
+        status: 'CANCELLED',
+      ));
       return true;
     } catch (e) {
       _error = 'Failed to cancel trade';
@@ -284,6 +298,11 @@ class TradeBackendProvider extends ChangeNotifier {
     return _tradeApi!.listOffers(tradeId);
   }
 
+  Future<Map<String, dynamic>> listMyOffers({int page = 1, int size = 50}) async {
+    await _ensureClient();
+    return _tradeApi!.listMyOffers(page: page, size: size);
+  }
+
   Future<bool> createOffer(
     String tradeId, {
     String? amount,
@@ -296,10 +315,11 @@ class TradeBackendProvider extends ChangeNotifier {
     _busy = true;
     _error = null;
     _duplicateOfferId = null;
+    _lastCreatedOfferId = null;
     notifyListeners();
     try {
       await _ensureClient();
-      await _tradeApi!.createOffer(
+      final created = await _tradeApi!.createOffer(
         tradeId,
         amount: amount,
         offeredTradeId: offeredTradeId,
@@ -308,6 +328,8 @@ class TradeBackendProvider extends ChangeNotifier {
         requestedTradeId: requestedTradeId,
         requestedAmount: requestedAmount,
       );
+      final id = (created['id'] ?? created['offerId'])?.toString();
+      _lastCreatedOfferId = (id == null || id.isEmpty) ? null : id;
       return true;
     } on DioException catch (e) {
       final data = e.response?.data;
@@ -344,6 +366,7 @@ class TradeBackendProvider extends ChangeNotifier {
     try {
       await _ensureClient();
       await _tradeApi!.acceptOffer(offerId);
+      _emitOfferChanged(offerId);
       return true;
     } on DioException catch (e) {
       _error = _parseOfferApiError(e, 'accept');
@@ -381,6 +404,7 @@ class TradeBackendProvider extends ChangeNotifier {
     try {
       await _ensureClient();
       await _tradeApi!.rejectOffer(offerId);
+      _emitOfferChanged(offerId);
       return true;
     } on DioException catch (e) {
       _error = _parseOfferApiError(e, 'reject');
@@ -401,6 +425,7 @@ class TradeBackendProvider extends ChangeNotifier {
     try {
       await _ensureClient();
       await _tradeApi!.withdrawOffer(offerId);
+      _emitOfferChanged(offerId);
       return true;
     } on DioException catch (e) {
       _error = _parseOfferApiError(e, 'withdraw');

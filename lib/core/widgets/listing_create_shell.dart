@@ -1,6 +1,10 @@
+import 'dart:io';
+import 'dart:ui';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../motion/swipe_commit.dart';
 import 'enhanced_stepper.dart';
 
 /// Shared chrome for Trade / Gift / Donation create flows.
@@ -15,6 +19,14 @@ class ListingCreateShell extends StatelessWidget {
   final String primaryLabel;
   final bool isLoading;
   final bool showBackButton;
+  final String? chapterCaption;
+  final String? swipeCommitLabel;
+  final Future<void> Function()? onSwipeCommit;
+  final bool onStage;
+  final String? heroPath;
+  final String? reviewLabel;
+  /// Opens the same capture flow as the media picker (stage “Add a photo”).
+  final VoidCallback? onHeroTap;
 
   const ListingCreateShell({
     super.key,
@@ -28,44 +40,195 @@ class ListingCreateShell extends StatelessWidget {
     this.onPrimary,
     this.isLoading = false,
     this.showBackButton = true,
+    this.chapterCaption,
+    this.swipeCommitLabel,
+    this.onSwipeCommit,
+    this.onStage = false,
+    this.heroPath,
+    this.reviewLabel,
+    this.onHeroTap,
   });
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final bgColor = isDark ? const Color(0xFF121212) : const Color(0xFFF4F7FA);
+    final themeDark = Theme.of(context).brightness == Brightness.dark;
+    final isDark = onStage || themeDark;
+    final bgColor = onStage
+        ? accentColor
+        : (themeDark ? const Color(0xFF121212) : const Color(0xFFF4F7FA));
+
+    final content = SafeArea(
+      bottom: false,
+      child: Column(
+        children: [
+          ListingCreateHeader(
+            title: title,
+            accentColor: onStage ? Colors.white : accentColor,
+            isDark: isDark,
+            caption: chapterCaption,
+            stepIndex: onStage ? currentStep : null,
+            stepCount: onStage ? steps.length : null,
+            stepIcons: onStage
+                ? steps.map((s) => s.icon).toList(growable: false)
+                : null,
+          ),
+          if (onStage)
+            CreateStageWell(
+              path: heroPath,
+              color: accentColor,
+              onTap: onHeroTap,
+            ),
+          if (!onStage)
+            EnhancedStepper(
+              currentStep: currentStep,
+              totalSteps: steps.length,
+              steps: steps,
+              primaryColor: accentColor,
+              isDark: isDark,
+            ),
+          Expanded(
+            child: onStage
+                ? _CreateGlassSheet(
+                    accent: accentColor,
+                    child: body,
+                  )
+                : body,
+          ),
+          ListingCreateNavBar(
+            accentColor: accentColor,
+            isDark: isDark,
+            stageColor: onStage ? accentColor : null,
+            showBack: showBackButton && currentStep > 0,
+            onBack: onBack,
+            onPrimary: isLoading ? null : onPrimary,
+            primaryLabel: primaryLabel,
+            isLoading: isLoading,
+            swipeCommitLabel: swipeCommitLabel,
+            onSwipeCommit: onSwipeCommit,
+            reviewLabel: reviewLabel,
+          ),
+        ],
+      ),
+    );
 
     return Scaffold(
       backgroundColor: bgColor,
       body: GestureDetector(
-        behavior: HitTestBehavior.opaque,
-        onTap: () => FocusScope.of(context).unfocus(),
-        child: SafeArea(
-          child: Column(
-            children: [
-              ListingCreateHeader(
-                title: title,
-                accentColor: accentColor,
-                isDark: isDark,
+        behavior: HitTestBehavior.deferToChild,
+        onTap: () {
+          final focus = FocusManager.instance.primaryFocus;
+          if (focus != null && focus.hasFocus) {
+            focus.unfocus();
+          }
+        },
+        child: onStage
+            ? Stack(
+                fit: StackFit.expand,
+                children: [
+                  DecoratedBox(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        colors: [
+                          Color.lerp(accentColor, Colors.white, 0.18)!,
+                          accentColor,
+                          Color.lerp(accentColor, Colors.black, 0.22)!,
+                        ],
+                        stops: const [0.0, 0.42, 1.0],
+                      ),
+                    ),
+                  ),
+                  Positioned(
+                    top: -80,
+                    right: -60,
+                    child: IgnorePointer(
+                      child: Container(
+                        width: 220,
+                        height: 220,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: Colors.white.withValues(alpha: 0.12),
+                        ),
+                      ),
+                    ),
+                  ),
+                  Positioned(
+                    top: 140,
+                    left: -70,
+                    child: IgnorePointer(
+                      child: Container(
+                        width: 180,
+                        height: 180,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: Colors.black.withValues(alpha: 0.08),
+                        ),
+                      ),
+                    ),
+                  ),
+                  content,
+                ],
+              )
+            : content,
+      ),
+    );
+  }
+}
+
+class _CreateGlassSheet extends StatelessWidget {
+  final Color accent;
+  final Widget child;
+
+  const _CreateGlassSheet({required this.accent, required this.child});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(12, 4, 12, 0),
+      child: ClipRRect(
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.94),
+              borderRadius:
+                  const BorderRadius.vertical(top: Radius.circular(28)),
+              border: Border.all(
+                color: Colors.white.withValues(alpha: 0.55),
               ),
-              EnhancedStepper(
-                currentStep: currentStep,
-                totalSteps: steps.length,
-                steps: steps,
-                primaryColor: accentColor,
-                isDark: isDark,
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.18),
+                  blurRadius: 28,
+                  offset: const Offset(0, -6),
+                ),
+                BoxShadow(
+                  color: accent.withValues(alpha: 0.22),
+                  blurRadius: 24,
+                  offset: const Offset(0, 10),
+                ),
+              ],
+            ),
+            child: Theme(
+              data: Theme.of(context).copyWith(
+                brightness: Brightness.light,
+                colorScheme: ColorScheme.light(
+                  primary: accent,
+                  onPrimary: Colors.white,
+                  surface: Colors.white,
+                  onSurface: Colors.black87,
+                ),
               ),
-              Expanded(child: body),
-              ListingCreateNavBar(
-                accentColor: accentColor,
-                isDark: isDark,
-                showBack: showBackButton && currentStep > 0,
-                onBack: onBack,
-                onPrimary: isLoading ? null : onPrimary,
-                primaryLabel: primaryLabel,
-                isLoading: isLoading,
+              child: DefaultTextStyle.merge(
+                style: const TextStyle(color: Colors.black87),
+                child: IconTheme.merge(
+                  data: const IconThemeData(color: Colors.black87),
+                  child: child,
+                ),
               ),
-            ],
+            ),
           ),
         ),
       ),
@@ -78,6 +241,10 @@ class ListingCreateHeader extends StatelessWidget {
   final Color accentColor;
   final bool isDark;
   final VoidCallback? onBack;
+  final String? caption;
+  final int? stepIndex;
+  final int? stepCount;
+  final List<IconData>? stepIcons;
 
   const ListingCreateHeader({
     super.key,
@@ -85,68 +252,170 @@ class ListingCreateHeader extends StatelessWidget {
     required this.accentColor,
     required this.isDark,
     this.onBack,
+    this.caption,
+    this.stepIndex,
+    this.stepCount,
+    this.stepIcons,
   });
 
   @override
   Widget build(BuildContext context) {
+    final showSteps = stepIndex != null && stepCount != null && stepCount! > 0;
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Material(
-            color: isDark ? Colors.white.withValues(alpha: 0.08) : Colors.white,
-            borderRadius: BorderRadius.circular(14),
-            child: InkWell(
-              onTap: onBack ?? () => Navigator.of(context).maybePop(),
-              borderRadius: BorderRadius.circular(14),
-              child: Container(
-                width: 44,
-                height: 44,
-                alignment: Alignment.center,
-                decoration: BoxDecoration(
+          Row(
+            children: [
+              Material(
+                color: isDark
+                    ? Colors.white.withValues(alpha: 0.12)
+                    : Colors.white,
+                borderRadius: BorderRadius.circular(14),
+                child: InkWell(
+                  onTap: onBack ?? () => Navigator.of(context).maybePop(),
                   borderRadius: BorderRadius.circular(14),
-                  border: Border.all(
-                    color: isDark
-                        ? Colors.white.withValues(alpha: 0.12)
-                        : Colors.black.withValues(alpha: 0.06),
+                  child: Container(
+                    width: 44,
+                    height: 44,
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(
+                        color: isDark
+                            ? Colors.white.withValues(alpha: 0.16)
+                            : Colors.black.withValues(alpha: 0.06),
+                      ),
+                    ),
+                    child: Icon(
+                      Icons.arrow_back_ios_new_rounded,
+                      size: 16,
+                      color: isDark ? Colors.white : Colors.black87,
+                    ),
                   ),
                 ),
-                child: Icon(
-                  Icons.arrow_back_ios_new_rounded,
-                  size: 16,
-                  color: isDark ? Colors.white : Colors.black87,
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: TextStyle(
+                        fontSize: 22,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: -0.4,
+                        color: isDark ? Colors.white : Colors.black87,
+                      ),
+                    ),
+                    if (caption != null && caption!.isNotEmpty) ...[
+                      const SizedBox(height: 2),
+                      Text(
+                        caption!,
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                          color: isDark
+                              ? Colors.white.withValues(alpha: 0.78)
+                              : accentColor,
+                        ),
+                      ),
+                    ],
+                  ],
                 ),
+              ),
+            ],
+          ),
+          if (showSteps) ...[
+            const SizedBox(height: 14),
+            _CreateStepPills(
+              current: stepIndex!,
+              total: stepCount!,
+              icons: stepIcons,
+              light: isDark,
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _CreateStepPills extends StatelessWidget {
+  final int current;
+  final int total;
+  final List<IconData>? icons;
+  final bool light;
+
+  const _CreateStepPills({
+    required this.current,
+    required this.total,
+    required this.light,
+    this.icons,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        for (var i = 0; i < total; i++) ...[
+          if (i > 0) const SizedBox(width: 8),
+          Expanded(
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 280),
+              curve: Curves.easeOutCubic,
+              height: 40,
+              decoration: BoxDecoration(
+                color: i == current
+                    ? Colors.white
+                    : Colors.white.withValues(alpha: i < current ? 0.28 : 0.12),
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(
+                  color: Colors.white.withValues(
+                    alpha: i == current ? 0.95 : 0.2,
+                  ),
+                ),
+                boxShadow: i == current
+                    ? [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.16),
+                          blurRadius: 12,
+                          offset: const Offset(0, 4),
+                        ),
+                      ]
+                    : null,
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    icons != null && i < icons!.length
+                        ? icons![i]
+                        : Icons.circle,
+                    size: 16,
+                    color: i == current
+                        ? Colors.black87
+                        : Colors.white.withValues(alpha: 0.85),
+                  ),
+                  const SizedBox(width: 6),
+                  Text(
+                    '${i + 1}',
+                    style: TextStyle(
+                      fontWeight: FontWeight.w900,
+                      fontSize: 13,
+                      color: i == current
+                          ? Colors.black87
+                          : Colors.white.withValues(alpha: 0.9),
+                    ),
+                  ),
+                ],
               ),
             ),
           ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Container(
-                  width: 28,
-                  height: 3,
-                  decoration: BoxDecoration(
-                    color: accentColor,
-                    borderRadius: BorderRadius.circular(2),
-                  ),
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  title,
-                  style: TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.w900,
-                    letterSpacing: -0.3,
-                    color: isDark ? Colors.white : Colors.black87,
-                  ),
-                ),
-              ],
-            ),
-          ),
         ],
-      ),
+      ],
     );
   }
 }
@@ -160,6 +429,10 @@ class ListingCreateNavBar extends StatelessWidget {
   final String primaryLabel;
   final String secondaryLabel;
   final bool isLoading;
+  final String? swipeCommitLabel;
+  final Future<void> Function()? onSwipeCommit;
+  final String? reviewLabel;
+  final Color? stageColor;
 
   const ListingCreateNavBar({
     super.key,
@@ -171,21 +444,34 @@ class ListingCreateNavBar extends StatelessWidget {
     this.onBack,
     this.onPrimary,
     this.isLoading = false,
+    this.swipeCommitLabel,
+    this.onSwipeCommit,
+    this.reviewLabel,
+    this.stageColor,
   });
 
   @override
   Widget build(BuildContext context) {
+    final stage = stageColor;
     return Container(
-      padding: const EdgeInsets.fromLTRB(20, 10, 20, 20),
+      padding: EdgeInsets.fromLTRB(
+        20,
+        12,
+        20,
+        12 + MediaQuery.paddingOf(context).bottom,
+      ),
       decoration: BoxDecoration(
-        color: isDark
-            ? const Color(0xFF121212).withValues(alpha: 0.96)
-            : Colors.white.withValues(alpha: 0.96),
+        color: stage ??
+            (isDark
+                ? const Color(0xFF121212).withValues(alpha: 0.96)
+                : Colors.white.withValues(alpha: 0.96)),
         border: Border(
           top: BorderSide(
-            color: isDark
-                ? Colors.white.withValues(alpha: 0.06)
-                : Colors.black.withValues(alpha: 0.05),
+            color: stage != null
+                ? Colors.white.withValues(alpha: 0.12)
+                : (isDark
+                    ? Colors.white.withValues(alpha: 0.06)
+                    : Colors.black.withValues(alpha: 0.05)),
           ),
         ),
       ),
@@ -201,15 +487,19 @@ class ListingCreateNavBar extends StatelessWidget {
                         onBack!();
                       },
                 style: OutlinedButton.styleFrom(
-                  foregroundColor: isDark ? Colors.white : Colors.black87,
+                  foregroundColor: stage != null
+                      ? Colors.white
+                      : (isDark ? Colors.white : Colors.black87),
                   side: BorderSide(
-                    color: isDark
-                        ? Colors.white.withValues(alpha: 0.18)
-                        : Colors.black.withValues(alpha: 0.12),
+                    color: stage != null
+                        ? Colors.white.withValues(alpha: 0.28)
+                        : (isDark
+                            ? Colors.white.withValues(alpha: 0.18)
+                            : Colors.black.withValues(alpha: 0.12)),
                   ),
-                  minimumSize: const Size.fromHeight(52),
+                  minimumSize: const Size.fromHeight(54),
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16),
+                    borderRadius: BorderRadius.circular(18),
                   ),
                 ),
                 child: Text(
@@ -222,42 +512,297 @@ class ListingCreateNavBar extends StatelessWidget {
           ],
           Expanded(
             flex: showBack ? 2 : 1,
-            child: FilledButton(
-              onPressed: onPrimary == null
-                  ? null
-                  : () {
-                      HapticFeedback.lightImpact();
-                      onPrimary!();
+            child: swipeCommitLabel != null
+                ? SwipeCommitControl(
+                    label: swipeCommitLabel!,
+                    accent: accentColor,
+                    inverted: stage != null,
+                    busy: isLoading,
+                    onCommit: () async {
+                      final commit = onSwipeCommit;
+                      if (commit != null) {
+                        await commit();
+                        return;
+                      }
+                      onPrimary?.call();
                     },
-              style: FilledButton.styleFrom(
-                backgroundColor: accentColor,
-                foregroundColor: Colors.white,
-                disabledBackgroundColor: accentColor.withValues(alpha: 0.45),
-                minimumSize: const Size.fromHeight(52),
-                elevation: 0,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16),
-                ),
-              ),
-              child: isLoading
-                  ? const SizedBox(
-                      width: 22,
-                      height: 22,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2.4,
-                        valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                  )
+                : reviewLabel != null
+                    ? _ReviewPill(
+                        label: reviewLabel!,
+                        accent: stage != null ? Colors.white : accentColor,
+                        onStage: stage != null,
+                        onTap: onPrimary,
+                      )
+                    : FilledButton(
+                        onPressed: onPrimary == null
+                            ? null
+                            : () {
+                                HapticFeedback.lightImpact();
+                                onPrimary!();
+                              },
+                        style: FilledButton.styleFrom(
+                          backgroundColor:
+                              stage != null ? Colors.white : accentColor,
+                          foregroundColor:
+                              stage != null ? accentColor : Colors.white,
+                          disabledBackgroundColor: (stage != null
+                                  ? Colors.white
+                                  : accentColor)
+                              .withValues(alpha: 0.45),
+                          minimumSize: const Size.fromHeight(54),
+                          elevation: 0,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(18),
+                          ),
+                        ),
+                        child: isLoading
+                            ? SizedBox(
+                                width: 22,
+                                height: 22,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2.4,
+                                  valueColor: AlwaysStoppedAnimation<Color>(
+                                    stage != null ? accentColor : Colors.white,
+                                  ),
+                                ),
+                              )
+                            : Text(
+                                primaryLabel,
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.w900,
+                                  fontSize: 15,
+                                ),
+                              ),
                       ),
-                    )
-                  : Text(
-                      primaryLabel,
-                      style: const TextStyle(
-                        fontWeight: FontWeight.w800,
-                        fontSize: 15,
-                      ),
-                    ),
-            ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _ReviewPill extends StatelessWidget {
+  final String label;
+  final Color accent;
+  final bool onStage;
+  final VoidCallback? onTap;
+
+  const _ReviewPill({
+    required this.label,
+    required this.accent,
+    required this.onStage,
+    this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: double.infinity,
+      height: 54,
+      child: Material(
+        color: onStage ? Colors.white : accent,
+        borderRadius: BorderRadius.circular(18),
+        child: InkWell(
+          key: const Key('create-review-handle'),
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(18),
+          child: Center(
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(
+                  label,
+                  style: TextStyle(
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: 0.3,
+                    fontSize: 15,
+                    color: onStage ? Colors.black87 : Colors.white,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Icon(
+                  Icons.arrow_forward_rounded,
+                  size: 18,
+                  color: onStage ? Colors.black87 : Colors.white,
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Empty hub-colored well. A new photo flies into the ring.
+class CreateStageWell extends StatefulWidget {
+  final String? path;
+  final Color color;
+  final VoidCallback? onTap;
+
+  const CreateStageWell({
+    super.key,
+    required this.color,
+    this.path,
+    this.onTap,
+  });
+
+  @override
+  State<CreateStageWell> createState() => _CreateStageWellState();
+}
+
+class _CreateStageWellState extends State<CreateStageWell>
+    with TickerProviderStateMixin {
+  late final AnimationController _fly;
+  late final AnimationController _breathe;
+  String? _seen;
+
+  @override
+  void initState() {
+    super.initState();
+    _fly = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 520),
+    );
+    _breathe = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 2200),
+    )..repeat(reverse: true);
+    _seen = widget.path;
+    if (widget.path != null) _fly.value = 1;
+  }
+
+  @override
+  void didUpdateWidget(CreateStageWell oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.path != _seen && widget.path != null) {
+      _seen = widget.path;
+      _fly.forward(from: 0);
+    }
+  }
+
+  @override
+  void dispose() {
+    _fly.dispose();
+    _breathe.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final path = widget.path;
+    final reduce = MediaQuery.disableAnimationsOf(context);
+    final well = SizedBox(
+      height: 188,
+      child: AnimatedBuilder(
+        animation: Listenable.merge([_fly, _breathe]),
+        builder: (context, _) {
+          final t = reduce
+              ? 1.0
+              : Curves.easeOutBack.transform(_fly.value.clamp(0.0, 1.0));
+          final breath = reduce ? 0.0 : _breathe.value;
+          return Stack(
+            alignment: Alignment.center,
+            children: [
+              Transform.scale(
+                scale: 1 + 0.04 * breath,
+                child: Container(
+                  width: 176,
+                  height: 176,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                      color: const Color(0xFFE8C872).withValues(
+                        alpha: 0.55 + 0.35 * breath,
+                      ),
+                      width: 3,
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: const Color(0xFFE8C872).withValues(
+                          alpha: 0.18 + 0.22 * breath,
+                        ),
+                        blurRadius: 28,
+                      ),
+                    ],
+                    gradient: RadialGradient(
+                      colors: [
+                        Colors.white.withValues(alpha: 0.32),
+                        Colors.white.withValues(alpha: 0),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+              if (path != null && path.isNotEmpty)
+                Transform.scale(
+                  scale: 0.18 + 0.82 * t,
+                  child: Container(
+                    width: 128,
+                    height: 128,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.28),
+                          blurRadius: 18,
+                          offset: const Offset(0, 8),
+                        ),
+                      ],
+                    ),
+                    child: ClipOval(
+                      child: Image.file(
+                        File(path),
+                        width: 128,
+                        height: 128,
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, __, ___) => const ColoredBox(
+                          color: Colors.white24,
+                          child: Icon(
+                            Icons.image_outlined,
+                            color: Colors.white,
+                            size: 42,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                )
+              else
+                Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      Icons.add_a_photo_outlined,
+                      color: Colors.white.withValues(alpha: 0.92),
+                      size: 28,
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'Add a photo',
+                      style: TextStyle(
+                        color: Colors.white.withValues(alpha: 0.92),
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ],
+                ),
+            ],
+          );
+        },
+      ),
+    );
+    if (widget.onTap == null) return well;
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: () {
+          HapticFeedback.selectionClick();
+          widget.onTap!();
+        },
+        customBorder: const CircleBorder(),
+        child: well,
       ),
     );
   }
@@ -284,9 +829,9 @@ class ListingCreateTipCard extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: accentColor.withValues(alpha: isDark ? 0.12 : 0.08),
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: accentColor.withValues(alpha: 0.22)),
+        color: accentColor.withValues(alpha: isDark ? 0.14 : 0.1),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: accentColor.withValues(alpha: 0.28)),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -299,10 +844,10 @@ class ListingCreateTipCard extends StatelessWidget {
               style: TextStyle(
                 fontSize: 13,
                 height: 1.4,
-                fontWeight: FontWeight.w500,
+                fontWeight: FontWeight.w600,
                 color: isDark
-                    ? Colors.white.withValues(alpha: 0.82)
-                    : Colors.black.withValues(alpha: 0.72),
+                    ? Colors.white.withValues(alpha: 0.88)
+                    : Colors.black.withValues(alpha: 0.75),
               ),
             ),
           ),

@@ -161,6 +161,8 @@ class _EditTradeScreenState extends State<EditTradeScreen> {
       isLoading: _isLoading,
       isDirty: _isDirty,
       onSave: _save,
+      swipeCommitLabel: 'Save Trade',
+      onSwipeCommit: _save,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [

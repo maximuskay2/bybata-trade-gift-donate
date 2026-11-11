@@ -47,7 +47,7 @@ Deploy `apps/api` to Railway (or any host) and set these server variables. Do no
 - `PAYPAL_ENV=sandbox`
 - `PAYPAL_WEBHOOK_ID`
 - `OPENAI_API_KEY` (optional)
-- `API_PUBLIC_URL` as the public API origin, so PayPal can redirect back to `/v1/trade-topups/paypal/return`
+- `API_PUBLIC_BASE_URL` as the public API origin, so PayPal can redirect back to `/v1/trade-topups/paypal/return` (`API_PUBLIC_URL` still works as an override; on Railway the service's public domain is used if neither is set)
 
 Point the PayPal sandbox webhook at `https://<api-host>/v1/trade-topups/paypal/webhook` for `PAYMENT.CAPTURE.COMPLETED` and `PAYMENT.CAPTURE.REFUNDED`.
 

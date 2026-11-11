@@ -6,6 +6,7 @@ import '../conversational_feed_provider.dart';
 import '../conversational_ranker.dart';
 import '../conversational_unread_enricher.dart';
 import 'donation_hero_tile.dart';
+import 'soft_reveal.dart';
 import '../../../feed/widgets/social_listing_card.dart';
 
 /// Masonry-style bento grid for conversational home results.
@@ -54,6 +55,7 @@ class BentoResultsGrid extends StatelessWidget {
     final right = <Widget>[];
     var leftH = 0.0;
     var rightH = 0.0;
+    var reveal = 0;
 
     for (final ranked in items) {
       if (isIdle &&
@@ -93,11 +95,20 @@ class BentoResultsGrid extends StatelessWidget {
         padding: const EdgeInsets.only(bottom: 14),
         child: tile,
       );
+      final shown = isIdle
+          ? padded
+          : SoftReveal(
+              key: ValueKey('${feed.activeQuery}-${ranked.data.id}'),
+              index: reveal,
+              travel: 22,
+              child: padded,
+            );
+      reveal += 1;
       if (leftH <= rightH) {
-        left.add(padded);
+        left.add(shown);
         leftH += h + 14;
       } else {
-        right.add(padded);
+        right.add(shown);
         rightH += h + 14;
       }
     }

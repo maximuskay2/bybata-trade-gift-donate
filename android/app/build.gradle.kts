@@ -1,4 +1,5 @@
 import java.util.Properties
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 plugins {
     id("com.android.application")
@@ -22,17 +23,13 @@ if (keystorePropertiesFile.exists()) {
 android {
     namespace = "com.bybata.bybata"
     compileSdk = flutter.compileSdkVersion
-    // Use installed NDK 30 — local 28.2.13676358 install was corrupted/incomplete.
-    ndkVersion = "30.0.14904198"
+    // Use the NDK already on this machine (cmdline-tools/sdkmanager not installed).
+    ndkVersion = "28.2.13676358"
 
     compileOptions {
         isCoreLibraryDesugaringEnabled = true
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
-    }
-
-    kotlinOptions {
-        jvmTarget = JavaVersion.VERSION_11.toString()
     }
 
     defaultConfig {
@@ -76,9 +73,17 @@ android {
     }
 }
 
+kotlin {
+    compilerOptions {
+        jvmTarget.set(JvmTarget.JVM_11)
+    }
+}
+
 dependencies {
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.2")
     implementation("androidx.core:core-splashscreen:1.0.1")
+    implementation("androidx.media3:media3-transformer:1.4.1")
+    implementation("androidx.media3:media3-effect:1.4.1")
 }
 
 flutter {

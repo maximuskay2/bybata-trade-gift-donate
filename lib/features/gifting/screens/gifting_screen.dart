@@ -20,10 +20,7 @@ import '../providers/gift_provider.dart';
 import '../providers/gift_provider.dart' show GiftClaim;
 import '../../chat/providers/chat_provider.dart';
 import '../../chat/models/chat_conversation.dart';
-import '../../../core/constants/app_constants.dart';
 import 'gift_request_chat_screen.dart';
-import 'my_gifts_screen.dart';
-import 'gift_details_loader.dart';
 import '../../profile/screens/user_profile_screen.dart';
 import '../../trade/models/trade_models.dart';
 import 'package:bybata/core/widgets/bybata_loading_indicator.dart';
@@ -32,17 +29,34 @@ import '../../feed/models/social_listing_card_data.dart';
 import '../../feed/widgets/social_feed_list.dart';
 import 'package:bybata/core/widgets/app_toast.dart';
 import 'package:bybata/core/navigation/guarded_navigator.dart';
+import '../../../core/motion/create_stage_route.dart';
+import '../../../core/motion/hero_stage.dart';
+import '../../../core/motion/hub_atmosphere.dart';
+import '../../../core/motion/hub_create_rail.dart';
+import '../../../core/motion/hub_stage_bus.dart';
+import '../../../core/motion/hub_deck_bar.dart';
+import '../../../core/motion/living_slide.dart';
+import '../../../core/motion/soft_reveal.dart';
+import '../../../core/motion/stage_controller.dart';
+import '../../../core/utils/haptic_utils.dart';
+import '../../karma/providers/karma_provider.dart';
+import '../../stage/living_slide_mapper.dart';
+import '../widgets/gift_claim_sheet.dart';
+import '../widgets/gift_request_act.dart';
+import 'create_gift_screen.dart';
 
 class GiftingScreen extends StatefulWidget {
   final int initialTabIndex;
   final String? highlightRequestId;
   final String? highlightGiftId;
+  final String? stageFocusId;
 
   const GiftingScreen({
     super.key,
     this.initialTabIndex = 0,
     this.highlightRequestId,
     this.highlightGiftId,
+    this.stageFocusId,
   });
 
   @override
@@ -67,10 +81,17 @@ class _GiftingScreenState extends State<GiftingScreen>
   String? _activeHighlightRequestId;
   String? _activeHighlightGiftId;
   bool _highlightScrollAttempted = false;
+  final StageController _living = StageController();
+  final GiftRequestDraft _giftDraft = GiftRequestDraft();
+  List<LivingSlide> _livingSlides = const [];
+  bool _openedStageFocus = false;
+  String? _pendingFocus;
 
   @override
   void initState() {
     super.initState();
+    _living.addListener(_onLivingChanged);
+    HubStageBus.register(HubStageBus.gift, _openLinked);
     _tabController = TabController(length: 4, vsync: this);
     _tabController.addListener(() {
       setState(() {
@@ -241,12 +262,37 @@ class _GiftingScreenState extends State<GiftingScreen>
     if (route != null) {
       appRouteObserver.unsubscribe(this);
       appRouteObserver.subscribe(this, route);
+      HubStageBus.markCurrent(HubStageBus.gift, route.isCurrent);
     }
+  }
+
+  void _openLinked(String id) {
+    _pendingFocus = id;
+    _openedStageFocus = false;
+    _maybeOpenStageFocus();
+  }
+
+  @override
+  void didPush() => HubStageBus.markCurrent(HubStageBus.gift, true);
+
+  @override
+  void didPushNext() => HubStageBus.markCurrent(HubStageBus.gift, false);
+
+  @override
+  void didPop() => HubStageBus.markCurrent(HubStageBus.gift, false);
+
+  void _onLivingChanged() {
+    if (mounted) setState(() {});
   }
 
   @override
   void dispose() {
+    HubStageBus.markCurrent(HubStageBus.gift, false);
+    HubStageBus.unregister(HubStageBus.gift, _openLinked);
     appRouteObserver.unsubscribe(this);
+    _living.removeListener(_onLivingChanged);
+    _living.dispose();
+    _giftDraft.dispose();
     _tabController.dispose();
     _countdownTimer?.cancel();
     super.dispose();
@@ -254,6 +300,7 @@ class _GiftingScreenState extends State<GiftingScreen>
 
   @override
   void didPopNext() {
+    HubStageBus.markCurrent(HubStageBus.gift, true);
     ListingVideoHandoff.onDetailRouteClosed();
     _loadInitialData(force: true);
     if (_tabController.index == 2) {
@@ -272,7 +319,9 @@ class _GiftingScreenState extends State<GiftingScreen>
     final createdGiftId =
         args is Map ? args['createdGiftId']?.toString() : null;
     final shouldForce = force || routeRefresh;
-    giftProvider.loadGifts(force: shouldForce);
+    giftProvider.loadGifts(force: shouldForce).whenComplete(() {
+      if (mounted) _maybeOpenStageFocus();
+    });
     if (auth.isAuthenticated) {
       giftProvider.loadMyGifts(force: shouldForce);
       if (shouldForce) {
@@ -320,11 +369,20 @@ class _GiftingScreenState extends State<GiftingScreen>
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    return Scaffold(
+    return PopScope(
+      canPop: !_living.isOpen,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) _living.back();
+      },
+      child: Scaffold(
       backgroundColor: isDark ? const Color(0xFF0D0B12) : const Color(0xFFF8FAFF),
       extendBody: true,
       body: Stack(
         children: [
+          HubAtmosphere(
+            accent: AppTheme.giftColor,
+            visible: !_living.isOpen,
+          ),
           Column(
             children: [
               HubScreenTopBar(
@@ -334,12 +392,8 @@ class _GiftingScreenState extends State<GiftingScreen>
                   HubTopBarIconButton(
                     icon: Icons.card_giftcard_rounded,
                     onTap: () {
-                      if (AppRoutes.requireSignIn(context)) return;
-                      GuardedNavigator.push(context, 
-                        MaterialPageRoute(
-                          builder: (_) => const MyGiftsScreen(),
-                        ),
-                      );
+                      if (!guardHubTabForGuest(context, 1)) return;
+                      _tabController.animateTo(1);
                     },
                     isDark: isDark,
                     iconColor: AppTheme.giftColor,
@@ -373,129 +427,67 @@ class _GiftingScreenState extends State<GiftingScreen>
               ),
             ],
           ),
-          Align(
-            alignment: Alignment.centerRight,
-            child: _buildRightMiddleCreateGiftButton(),
-          ),
+          if (!_living.isOpen)
+            Align(
+              alignment: Alignment.centerRight,
+              child: HubCreateRail(
+                color: AppTheme.giftColor,
+                label: 'CREATE GIFT',
+                onTap: _openCreateGift,
+              ),
+            ),
+          if (_living.isOpen && _livingSlides.isNotEmpty)
+            Positioned.fill(child: _giftStage()),
         ],
       ),
+    ),
     );
   }
 
-  Widget _buildRightMiddleCreateGiftButton() {
-    return GestureDetector(
-      onTap: () => AppRoutes.navigateToCreateGift(context),
-      child: Container(
-        height: 130,
-        width: 48,
-        decoration: BoxDecoration(
-          color: AppTheme.giftColor,
-          borderRadius: const BorderRadius.only(
-            topLeft: Radius.circular(24),
-            bottomLeft: Radius.circular(24),
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: AppTheme.giftColor.withValues(alpha: 0.3),
-              blurRadius: 20,
-              offset: const Offset(-4, 6),
-            ),
-          ],
-        ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Icon(
-              Icons.add_rounded,
-              color: Colors.white,
-              size: 22,
-            ),
-            const SizedBox(height: 8),
-            RotatedBox(
-              quarterTurns: 3,
-              child: SizedBox(
-                width: 85,
-                child: FittedBox(
-                  fit: BoxFit.scaleDown,
-                  child: Text(
-                    'CREATE GIFT',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 10,
-                      fontWeight: FontWeight.w900,
-                      letterSpacing: 1.5,
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ],
-        ),
+  Widget _giftStage() {
+    return LivingHeroStage(
+      controller: _living,
+      stageColor: AppTheme.giftColor,
+      slides: _livingSlides,
+      commitLabel: 'Request this',
+      markIcon: Icons.card_giftcard_rounded,
+      actBuilder: (slide) => GiftRequestAct(
+        gift: slide.source is gift_models.Gift
+            ? slide.source as gift_models.Gift
+            : null,
+        draft: _giftDraft,
+      ),
+      beforeBuilder: (slide) async => !AppRoutes.requireSignIn(context),
+      onEdit: _editGiftSlide,
+      onMessage: _messageGiftSlide,
+      onCommit: _commitGiftRequest,
+    );
+  }
+
+  void _openCreateGift() {
+    if (AppRoutes.requireSignIn(context)) return;
+    GuardedNavigator.push(
+      context,
+      CreateStageRoute(
+        color: AppTheme.giftColor,
+        origin: stageCardOrigin(context),
+        builder: (_) => const CreateGiftScreen(),
       ),
     );
   }
 
   Widget _buildFluidTabSwitcher() {
-    List<String> labels = ["Available", "My Gifts", "Requests", "History"];
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    return Container(
-      margin: const EdgeInsets.fromLTRB(16, 10, 16, 15),
-      height: 54,
-      decoration: BoxDecoration(
-        color: isDark ? Colors.white.withValues(alpha: 0.04) : Colors.black.withValues(alpha: 0.03),
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Stack(
-        children: [
-          AnimatedAlign(
-            duration: const Duration(milliseconds: 300),
-            curve: Curves.easeOutCubic,
-            alignment: Alignment(-1.0 + (_tabController.index * (2.0 / (labels.length - 1))), 0),
-            child: FractionallySizedBox(
-              widthFactor: 1 / labels.length,
-              child: Container(
-                margin: const EdgeInsets.all(4),
-                decoration: BoxDecoration(
-                  color: isDark ? const Color(0xFF1E1A28) : Colors.white,
-                  borderRadius: BorderRadius.circular(16),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.05),
-                      blurRadius: 8,
-                      offset: const Offset(0, 2),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-          Row(
-            children: List.generate(labels.length, (index) => Expanded(
-              child: GestureDetector(
-                onTap: () {
-                  if (!guardHubTabForGuest(context, index)) return;
-                  _tabController.animateTo(index);
-                },
-                child: Container(
-                  color: Colors.transparent,
-                  child: Center(
-                    child: Text(
-                      labels[index],
-                      style: TextStyle(
-                        color: _tabController.index == index
-                            ? (isDark ? Colors.white : const Color(0xFF1C1921))
-                            : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.45),
-                        fontWeight: _tabController.index == index ? FontWeight.w900 : FontWeight.w700,
-                        fontSize: 11,
-                        letterSpacing: -0.1,
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            )),
-          ),
+    return SoftReveal(
+      index: 0,
+      travel: 10,
+      child: HubDeckBar(
+        controller: _tabController,
+        accent: AppTheme.giftColor,
+        activity: const [
+          HubActivity('Requests', 2),
+          HubActivity('History', 3),
         ],
+        guard: (index) => guardHubTabForGuest(context, index),
       ),
     );
   }
@@ -518,46 +510,79 @@ class _GiftingScreenState extends State<GiftingScreen>
             await giftProvider.loadGifts(force: true);
           },
           header: [
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: _buildQuickFilters(context),
+            SoftReveal(
+              index: 1,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: _buildQuickFilters(context),
+              ),
             ),
             const SizedBox(height: 16),
             if (_showSurpriseGifts)
-              Padding(padding: const EdgeInsets.symmetric(horizontal: 16), child: _buildSurpriseGiftsSection(context)),
+              SoftReveal(
+                index: 2,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: _buildSurpriseGiftsSection(context),
+                ),
+              ),
             if (_showChainGifts)
-              Padding(padding: const EdgeInsets.symmetric(horizontal: 16), child: _buildGiftChainsSection(context)),
+              SoftReveal(
+                index: 2,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: _buildGiftChainsSection(context),
+                ),
+              ),
             if (_showExpiringSoon)
-              Padding(padding: const EdgeInsets.symmetric(horizontal: 16), child: _buildExpiringSoonSection(context)),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: _buildSectionHeader(
-                'Featured Gifts',
-                Icons.local_fire_department_rounded,
-                AppTheme.karmaColor,
+              SoftReveal(
+                index: 2,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: _buildExpiringSoonSection(context),
+                ),
+              ),
+            SoftReveal(
+              index: 3,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: _buildSectionHeader(
+                  'Featured Gifts',
+                  Icons.local_fire_department_rounded,
+                  AppTheme.karmaColor,
+                ),
               ),
             ),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: _buildFeaturedGifts(context),
+            SoftReveal(
+              index: 3,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: _buildFeaturedGifts(context),
+              ),
             ),
             const SizedBox(height: 16),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: AdPlacementSection(
-                key: ValueKey('gift_ads_$_adFeedRefresh'),
-                placementKey: 'gift_feed',
-                refreshToken: _adFeedRefresh,
-                title: 'Sponsored Giveaway',
+            SoftReveal(
+              index: 4,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: AdPlacementSection(
+                  key: ValueKey('gift_ads_$_adFeedRefresh'),
+                  placementKey: 'gift_feed',
+                  refreshToken: _adFeedRefresh,
+                  title: 'Sponsored Giveaway',
+                ),
               ),
             ),
             const SizedBox(height: 24),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: _buildSectionHeader(
-                'All Gifts (${allGifts.length})',
-                Icons.grid_view_rounded,
-                Theme.of(context).colorScheme.primary,
+            SoftReveal(
+              index: 5,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: _buildSectionHeader(
+                  'All Gifts (${allGifts.length})',
+                  Icons.grid_view_rounded,
+                  AppTheme.giftColor,
+                ),
               ),
             ),
             const SizedBox(height: 8),
@@ -606,7 +631,7 @@ class _GiftingScreenState extends State<GiftingScreen>
               'Random, targeted, or chain gifts',
               'Earn karma when others claim',
             ],
-            onCreate: () => AppRoutes.navigateToCreateGift(context),
+            onCreate: () => _openCreateGift(),
           );
         }
 
@@ -632,7 +657,7 @@ class _GiftingScreenState extends State<GiftingScreen>
             HubMineCreateBar(
               accentColor: AppTheme.giftColor,
               label: 'Give another gift',
-              onTap: () => AppRoutes.navigateToCreateGift(context),
+              onTap: () => _openCreateGift(),
             ),
           ],
         );
@@ -755,11 +780,12 @@ class _GiftingScreenState extends State<GiftingScreen>
   }
 
   Widget _buildRealGiftCard(gift_models.Gift gift) {
-    return Padding(
+    return Builder(
+      builder: (cardContext) => Padding(
       padding: const EdgeInsets.only(bottom: 14),
       child: _build3DContainer(
         child: DebouncedTap(
-          onTap: () => _showGiftDetails(gift),
+          onTap: () => _showGiftDetails(gift, origin: stageCardOrigin(cardContext)),
           child: Column(
             children: [
               Padding(
@@ -811,6 +837,7 @@ class _GiftingScreenState extends State<GiftingScreen>
           ),
         ),
       ),
+    ),
     );
   }
 
@@ -1043,12 +1070,123 @@ class _GiftingScreenState extends State<GiftingScreen>
     );
   }
 
-  void _showGiftDetails(gift_models.Gift gift) async {
-    final result = await GuardedNavigator.pushNamed(context, AppConstants.giftDetailsRoute, arguments: _giftToLegacyMap(gift));
-    if (result is Map && result['showRequests'] == true) {
-      context.read<GiftProvider>().loadGiftRequests(force: true, status: gift_models.GiftRequestStatus.pending);
-      if (mounted) _tabController.animateTo(2);
+  void _showGiftDetails(gift_models.Gift gift, {Rect? origin}) {
+    final provider = context.read<GiftProvider>();
+    final mine = _tabController.index == 1;
+    final list = mine ? provider.myGifts : provider.gifts;
+    final pool = list.any((item) => item.id == gift.id)
+        ? list
+        : <gift_models.Gift>[gift];
+    _openGiftStage(pool, gift.id, mine: mine, origin: origin);
+  }
+
+  void _openGiftStage(
+    List<gift_models.Gift> gifts,
+    String id, {
+    required bool mine,
+    Rect? origin,
+  }) {
+    final userId = context.read<AuthProvider>().currentUser?.id;
+    final slides = gifts
+        .map(
+          (gift) => LivingSlideMapper.fromGift(
+            gift,
+            currentUserId: userId,
+            treatAsMine: mine,
+          ),
+        )
+        .where((slide) => slide.id.isNotEmpty)
+        .toList();
+    if (slides.isEmpty) return;
+    final index = slides.indexWhere((slide) => slide.id == id);
+    _giftDraft.clear();
+    setState(() => _livingSlides = slides);
+    _living.open(slides[index < 0 ? 0 : index].id, origin: origin);
+  }
+
+  Future<void> _maybeOpenStageFocus() async {
+    final pending = _pendingFocus?.trim();
+    final id = (pending != null && pending.isNotEmpty)
+        ? pending
+        : widget.stageFocusId?.trim();
+    if (id == null || id.isEmpty || _openedStageFocus || !mounted) return;
+    final gifts = context.read<GiftProvider>().gifts;
+    if (gifts.any((gift) => gift.id == id)) {
+      _openedStageFocus = true;
+      _openGiftStage(gifts, id, mine: false);
+      return;
     }
+    _openedStageFocus = true;
+    final gift = await context.read<GiftProvider>().getGift(id);
+    if (!mounted || gift == null) return;
+    _openGiftStage([gift], id, mine: false);
+  }
+
+  Future<StageCommitResult?> _commitGiftRequest(LivingSlide slide) async {
+    final gift = slide.source is gift_models.Gift
+        ? slide.source as gift_models.Gift
+        : null;
+    if (gift == null) return null;
+    if (AppRoutes.requireSignIn(context)) return null;
+    if (giftNeedsClaimCode(gift) && _giftDraft.code.text.trim().isEmpty) {
+      HapticUtils.error();
+      AppToast.show(context, 'Enter the claim code for this gift.');
+      return null;
+    }
+    final currentUser = context.read<AuthProvider>().currentUser;
+    if (currentUser == null) return null;
+    final displayName = currentUser.displayName.isNotEmpty
+        ? currentUser.displayName
+        : currentUser.email;
+    final requester = gift_models.GiftUser(
+      id: currentUser.id,
+      name: displayName,
+      username: '@${displayName.replaceAll(' ', '').toLowerCase()}',
+      rating: currentUser.rating,
+      completedGifts: 0,
+      karmaPoints: currentUser.karmaPoints,
+      joinedDate: currentUser.createdAt,
+      isVerified: currentUser.isVerified,
+    );
+    final karma = context.read<KarmaProvider>();
+    final before = karma.totalKarma;
+    final provider = context.read<GiftProvider>();
+    final note = _giftDraft.note.text.trim();
+    final code = _giftDraft.code.text.trim();
+    final request = await provider.claimGift(
+      gift.id,
+      claimCode: code.isEmpty ? null : code,
+      requester: requester,
+      message: note.isEmpty ? null : note,
+    );
+    if (!mounted) return null;
+    if (request == null) {
+      HapticUtils.error();
+      AppToast.show(context, provider.error ?? 'Could not send the request');
+      return null;
+    }
+    var marks = 0;
+    try {
+      await karma.initialize();
+      marks = karmaFlyCount(before, karma.totalKarma);
+    } catch (_) {}
+    if (!mounted) return null;
+    HapticUtils.heavy();
+    _giftDraft.clear();
+    return StageCommitResult('Request sent', karmaMarks: marks);
+  }
+
+  Future<void> _editGiftSlide(LivingSlide slide) async {
+    final gift = slide.source;
+    if (gift is! gift_models.Gift) return;
+    if (AppRoutes.requireSignIn(context)) return;
+    AppRoutes.navigateToEditGift(context, gift);
+  }
+
+  Future<void> _messageGiftSlide(LivingSlide slide) async {
+    final gift = slide.source;
+    if (gift is! gift_models.Gift) return;
+    await openGiftGiverChat(context, gift);
   }
 
   Future<void> _approveRequest(gift_models.GiftRequest request) async {

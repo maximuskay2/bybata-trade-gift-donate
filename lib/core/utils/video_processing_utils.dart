@@ -29,10 +29,31 @@ class VideoProcessingUtils {
   static const Duration maxDuration = Duration(seconds: 60);
   static const int maxDurationMs = 60000;
 
+  /// First frame used as the cutout source for a listing clip.
+  static Future<String?> posterFrame(String sourcePath) async {
+    try {
+      final info = await VideoCompress.getMediaInfo(sourcePath);
+      final durationMs = info.duration?.toInt() ?? 0;
+      final thumb = await VideoCompress.getFileThumbnail(
+        sourcePath,
+        quality: 80,
+        position: durationMs > 400 ? 400 : 0,
+      );
+      return thumb.path;
+    } catch (e) {
+      debugPrint('[VideoProcessingUtils] posterFrame failed: $e');
+      return null;
+    }
+  }
+
   /// Validates duration, compresses video, and builds a JPEG poster frame.
+  ///
+  /// [limit] defaults to [maxDuration]. Listing capture passes the 8 second
+  /// hero clip cap. Older callers keep the one minute cap.
   static Future<ProcessedVideoResult?> prepareForUpload(
     String sourcePath, {
     void Function(double progress)? onProgress,
+    Duration? limit,
   }) async {
     final source = File(sourcePath);
     if (!source.existsSync()) return null;
@@ -48,7 +69,8 @@ class VideoProcessingUtils {
     try {
       final info = await VideoCompress.getMediaInfo(sourcePath);
       final durationMs = info.duration?.toInt() ?? 0;
-      if (durationMs > maxDurationMs + 500) {
+      final capMs = (limit ?? maxDuration).inMilliseconds;
+      if (durationMs > capMs + 500) {
         return null;
       }
 

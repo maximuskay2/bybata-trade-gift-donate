@@ -12,6 +12,7 @@ import 'main_navigation.dart';
 import '../../features/home_v2/screens/browse_home_screen_v2.dart';
 import 'package:bybata/core/widgets/app_toast.dart';
 import 'package:bybata/core/navigation/guarded_navigator.dart';
+import '../motion/hub_stage_bus.dart';
 
 /// Helper class for organized navigation throughout the app
 class AppRoutes {
@@ -167,6 +168,7 @@ class AppRoutes {
 
   /// Navigate to Trade Details by id (uses [TradeDetailsLoader]).
   static void navigateToTradeDetailsById(BuildContext context, String tradeId) {
+    if (HubStageBus.tryOpen(HubStageBus.trade, tradeId)) return;
     GuardedNavigator.pushNamed(context,
       AppConstants.tradeDetailsRoute,
       arguments: {'id': tradeId},
@@ -254,6 +256,7 @@ class AppRoutes {
 
   /// Navigate to Gift Details by id (uses [GiftDetailsLoader]).
   static void navigateToGiftDetailsById(BuildContext context, String giftId) {
+    if (HubStageBus.tryOpen(HubStageBus.gift, giftId)) return;
     GuardedNavigator.pushNamed(context,
       AppConstants.giftDetailsRoute,
       arguments: {'id': giftId},
@@ -281,6 +284,7 @@ class AppRoutes {
     BuildContext context,
     String campaignId,
   ) {
+    if (HubStageBus.tryOpen(HubStageBus.donate, campaignId)) return;
     GuardedNavigator.pushNamed(context,
       AppConstants.campaignDetailsRoute,
       arguments: {'id': campaignId},
@@ -342,10 +346,18 @@ class AppRoutes {
   }
 
   /// Donations hub — optional tab (0 browse, 1 my campaigns, 2 requests, 3 history).
-  static void navigateToDonationsHub(BuildContext context, {int tabIndex = 0}) {
+  static void navigateToDonationsHub(
+    BuildContext context, {
+    int tabIndex = 0,
+    String? stageFocusId,
+  }) {
     GuardedNavigator.pushNamed(context,
       AppConstants.donationsRoute,
-      arguments: {'initialTabIndex': tabIndex.clamp(0, 3)},
+      arguments: {
+        'initialTabIndex': tabIndex.clamp(0, 3),
+        if (stageFocusId != null && stageFocusId.isNotEmpty)
+          'stageFocusId': stageFocusId,
+      },
     );
   }
 
@@ -360,6 +372,7 @@ class AppRoutes {
     int tabIndex = 0,
     String? highlightOfferId,
     String? highlightTradeId,
+    String? stageFocusId,
   }) {
     GuardedNavigator.pushNamed(context,
       AppConstants.tradeRoute,
@@ -369,6 +382,8 @@ class AppRoutes {
           'highlightOfferId': highlightOfferId,
         if (highlightTradeId != null && highlightTradeId.isNotEmpty)
           'highlightTradeId': highlightTradeId,
+        if (stageFocusId != null && stageFocusId.isNotEmpty)
+          'stageFocusId': stageFocusId,
       },
     );
   }
@@ -391,6 +406,7 @@ class AppRoutes {
     int tabIndex = 0,
     String? highlightRequestId,
     String? highlightGiftId,
+    String? stageFocusId,
   }) {
     GuardedNavigator.pushNamed(context,
       AppConstants.giftingRoute,
@@ -400,6 +416,8 @@ class AppRoutes {
           'highlightRequestId': highlightRequestId,
         if (highlightGiftId != null && highlightGiftId.isNotEmpty)
           'highlightGiftId': highlightGiftId,
+        if (stageFocusId != null && stageFocusId.isNotEmpty)
+          'stageFocusId': stageFocusId,
       },
     );
   }

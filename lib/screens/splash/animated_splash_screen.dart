@@ -1,9 +1,8 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 
-import '../../core/widgets/bybata_loading_indicator.dart';
-
-/// Branded splash shown while the app boots. Logo and text render on frame 0
-/// so the handoff from native purple is straight into the animated splash.
+/// Dark gather splash. Three hub lights orbit a mark. No wordmark.
 class AnimatedSplashScreen extends StatefulWidget {
   final VoidCallback? onComplete;
   final bool showLoadingIndicator;
@@ -21,174 +20,180 @@ class AnimatedSplashScreen extends StatefulWidget {
 }
 
 class _AnimatedSplashScreenState extends State<AnimatedSplashScreen>
-    with TickerProviderStateMixin {
-  static const Color _nativeHandoffPurple = Color(0xFF5E35B1);
-
-  /// Branding motion (subtle glow pulse) — logo and text are visible on frame 0.
-  static const Duration _brandingMotion = Duration(milliseconds: 1200);
-
-  late AnimationController _ambientController;
-  late AnimationController _brandingController;
-
-  late Animation<double> _backgroundMorph;
-  late Animation<double> _logoGlow;
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _flow;
 
   @override
   void initState() {
     super.initState();
-
-    _ambientController = AnimationController(
-      duration: const Duration(seconds: 3),
+    _flow = AnimationController(
       vsync: this,
-    )..repeat(reverse: true);
-
-    _backgroundMorph = Tween<double>(begin: 0.0, end: 1.0).animate(
-      CurvedAnimation(
-        parent: _ambientController,
-        curve: Curves.easeInOutSine,
-      ),
+      duration: const Duration(milliseconds: 7200),
     );
+  }
 
-    _brandingController = AnimationController(
-      duration: _brandingMotion,
-      vsync: this,
-    );
-
-    _logoGlow = Tween<double>(begin: 0.85, end: 1.0).animate(
-      CurvedAnimation(
-        parent: _brandingController,
-        curve: Curves.easeInOut,
-      ),
-    );
-
-    _brandingController.forward();
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (MediaQuery.disableAnimationsOf(context)) {
+      _flow.stop();
+      _flow.value = 0.35;
+    } else if (!_flow.isAnimating) {
+      _flow.repeat();
+    }
   }
 
   @override
   void dispose() {
-    _ambientController.dispose();
-    _brandingController.dispose();
+    _flow.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
     return Scaffold(
-      backgroundColor: _nativeHandoffPurple,
+      backgroundColor: const Color(0xFF10141C),
       body: Stack(
         fit: StackFit.expand,
         children: [
-          AnimatedBuilder(
-            animation: _backgroundMorph,
-            builder: (context, child) {
-              return Container(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: isDark
-                        ? [
-                            const Color(0xFF0D0B12),
-                            Color.lerp(
-                              const Color(0xFF15101F),
-                              _nativeHandoffPurple,
-                              _backgroundMorph.value * 0.15,
-                            )!,
-                            const Color(0xFF0D0B12),
-                          ]
-                        : [
-                            _nativeHandoffPurple,
-                            Color.lerp(
-                              const Color(0xFF7B2CBF),
-                              const Color(0xFF321668),
-                              _backgroundMorph.value,
-                            )!,
-                            const Color(0xFF15101F),
-                          ],
+          Positioned.fill(
+            child: AnimatedBuilder(
+              animation: _flow,
+              builder: (context, _) {
+                return CustomPaint(
+                  painter: _GatherFieldPainter(t: _flow.value),
+                );
+              },
+            ),
+          ),
+          Center(
+            child: AnimatedBuilder(
+              animation: _flow,
+              builder: (context, child) {
+                final pulse = 0.5 + 0.5 * math.sin(_flow.value * math.pi * 2);
+                return Container(
+                  width: 108,
+                  height: 108,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    boxShadow: [
+                      BoxShadow(
+                        color: const Color(0xFFE8C872).withValues(
+                          alpha: 0.18 + 0.16 * pulse,
+                        ),
+                        blurRadius: 28 + 12 * pulse,
+                      ),
+                    ],
+                  ),
+                  child: child,
+                );
+              },
+              child: ClipOval(
+                child: Image.asset(
+                  'assets/animations/logo.png',
+                  fit: BoxFit.cover,
+                  gaplessPlayback: true,
+                  errorBuilder: (_, __, ___) => const ColoredBox(
+                    color: Color(0xFF1C2430),
+                    child: Icon(
+                      Icons.auto_awesome_rounded,
+                      color: Color(0xFFE8C872),
+                      size: 42,
+                    ),
                   ),
                 ),
-              );
-            },
-          ),
-          SafeArea(
-            child: Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  AnimatedBuilder(
-                    animation: _brandingController,
-                    builder: (context, child) {
-                      return Container(
-                        width: 110,
-                        height: 110,
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(28),
-                          boxShadow: [
-                            BoxShadow(
-                              color: const Color(0xFF7B2CBF)
-                                  .withValues(alpha: 0.4 * _logoGlow.value),
-                              blurRadius: 40,
-                              spreadRadius: 4,
-                            ),
-                          ],
-                        ),
-                        child: ClipRRect(
-                          borderRadius: BorderRadius.circular(28),
-                          child: Image.asset(
-                            'assets/animations/logo.png',
-                            fit: BoxFit.cover,
-                            gaplessPlayback: true,
-                            errorBuilder: (context, error, stackTrace) {
-                              return Container(
-                                color: const Color(0xFF7B2CBF),
-                                child: const Icon(
-                                  Icons.auto_awesome_rounded,
-                                  color: Colors.white,
-                                  size: 48,
-                                ),
-                              );
-                            },
-                          ),
-                        ),
-                      );
-                    },
-                  ),
-                  const SizedBox(height: 32),
-                  if (widget.showLoadingIndicator)
-                    Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const BybataLoadingIndicator(
-                          size: BybataLoadingSize.large,
-                          color: Colors.white,
-                          highlightColor: Colors.white,
-                        ),
-                        const SizedBox(height: 14),
-                        const Padding(
-                          padding: EdgeInsets.symmetric(horizontal: 44),
-                          child: Text(
-                            'Trade. Gift. Donate and Grow Together',
-                            textAlign: TextAlign.center,
-                            style: TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w600,
-                              letterSpacing: 0.5,
-                              color: Color(0xA6FFFFFF),
-                              height: 1.4,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                ],
               ),
             ),
           ),
+          if (widget.showLoadingIndicator)
+            const Align(
+              alignment: Alignment(0, 0.62),
+              child: Padding(
+                padding: EdgeInsets.symmetric(horizontal: 48),
+                child: Text(
+                  'Trade. Gift. Donate and Grow Together',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w600,
+                    letterSpacing: 0.3,
+                    color: Color(0xD9FFFFFF),
+                    height: 1.45,
+                  ),
+                ),
+              ),
+            ),
           if (widget.overlay != null) widget.overlay!,
         ],
       ),
     );
   }
+}
+
+class _GatherFieldPainter extends CustomPainter {
+  final double t;
+
+  const _GatherFieldPainter({required this.t});
+
+  static const List<Color> _lights = [
+    Color(0xFFE8C872),
+    Color(0xFFFB7185),
+    Color(0xFF34D399),
+  ];
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final rect = Offset.zero & size;
+    canvas.drawRect(rect, Paint()..color = const Color(0xFF10141C));
+    final center = size.center(Offset.zero);
+    final reach = math.min(size.width, size.height);
+    canvas.drawRect(
+      rect,
+      Paint()
+        ..shader = const RadialGradient(
+          colors: [Color(0xFF1C2430), Color(0xFF10141C)],
+          stops: [0.2, 0.78],
+        ).createShader(Rect.fromCircle(center: center, radius: reach * 0.72)),
+    );
+
+    final orbit = reach * 0.29;
+    final turn = t * math.pi * 2;
+    for (var i = 0; i < _lights.length; i++) {
+      final angle = turn + i * (math.pi * 2 / 3);
+      final breathe = 1 + 0.045 * math.sin(turn * 2 + i);
+      final point = center +
+          Offset(math.cos(angle), math.sin(angle) * 0.86) * orbit * breathe;
+      canvas.drawCircle(
+        point,
+        34,
+        Paint()
+          ..color = _lights[i].withValues(alpha: 0.32)
+          ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 26),
+      );
+      canvas.drawCircle(point, 9, Paint()..color = _lights[i]);
+    }
+
+    canvas.drawCircle(
+      center,
+      orbit,
+      Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 1.2
+        ..color = const Color(0x55FFFFFF),
+    );
+    canvas.drawArc(
+      Rect.fromCircle(center: center, radius: orbit + 18),
+      -math.pi / 2 + turn,
+      math.pi * 0.72,
+      false,
+      Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 2.4
+        ..strokeCap = StrokeCap.round
+        ..color = const Color(0xFFE8C872),
+    );
+  }
+
+  @override
+  bool shouldRepaint(_GatherFieldPainter oldDelegate) => oldDelegate.t != t;
 }

@@ -2,10 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
+import '../../../core/theme/app_theme.dart';
 import '../../../core/theme/theme_extensions.dart';
+import '../../../core/motion/soft_reveal.dart';
 import '../models/trade_models.dart' as trade_models;
 import '../providers/trade_backend_provider.dart';
 import '../widgets/trade_listing_preview.dart';
+import '../widgets/even_trade_panel.dart';
 import '../../../core/providers/auth_provider.dart';
 import '../widgets/offer_timeline_widget.dart';
 import 'trade_chat_screen.dart';
@@ -299,26 +302,69 @@ class _ExistingOfferNegotiationScreenState
     }
   }
 
+  trade_models.Trade? get _offeredTrade =>
+      widget.initialOfferedTrade ?? _latestOffer?.offeredTrade;
+
+  String get _partnerName => widget.isReceived
+      ? widget.initiatorName
+      : widget.targetTrade.owner.name;
+
+  String _guidanceFor(String status) {
+    if (status == 'pending') {
+      if (_isLatestOfferAuthoredByMe) {
+        return widget.isReceived
+            ? 'Waiting on their reply to your counter. Chat if you need to clarify.'
+            : 'Your offer is out. Hang tight, or counter again when they reply.';
+      }
+      if (widget.isReceived) {
+        return _isLatestOfferFromBidder
+            ? 'Accept, decline, or counter. For uneven item swaps, even it with PayPal first.'
+            : 'Review their counter, then accept, decline, or send yours.';
+      }
+      return 'Counter with another item or cash, or wait for the owner.';
+    }
+    if (status.contains('accepted')) {
+      return _isCashOffer
+          ? 'Finalize the cash handoff when you are both ready.'
+          : 'If PayPal settled the gap, finish the handoff in chat.';
+    }
+    return 'This negotiation is closed. Chat if you still need to coordinate.';
+  }
+
   @override
   Widget build(BuildContext context) {
-    final primaryColor = Theme.of(context).primaryColor;
-    final status = (_status ?? 'pending').toString().toLowerCase().replaceAll('_', '');
+    final accent = AppTheme.tradeColor;
+    final status =
+        (_status ?? 'pending').toString().toLowerCase().replaceAll('_', '');
     final canAcceptReject =
         widget.isReceived && status == 'pending' && _isLatestOfferFromBidder;
     final canCounterOffer = status == 'pending' && !_isLatestOfferAuthoredByMe;
     final canWithdraw = !widget.isReceived &&
         status == 'pending' &&
         (_offerTimeline == null || _offerTimeline!.length <= 1);
+    final (statusLabel, statusColor) =
+        trade_models.getOfferStatusDisplayFromRaw(
+      _status,
+      isReceived: widget.isReceived,
+      isCashOffer: _isCashOffer,
+    );
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final onSurface = Theme.of(context).colorScheme.onSurface;
+    final sticky = canAcceptReject || canCounterOffer || canWithdraw;
 
     final shortcuts = <ShortcutActivator, Intent>{
-      const SingleActivator(LogicalKeyboardKey.escape): const _CloseNegotiationIntent(),
+      const SingleActivator(LogicalKeyboardKey.escape):
+          const _CloseNegotiationIntent(),
       if (canAcceptReject) ...{
-        const SingleActivator(LogicalKeyboardKey.enter, control: true): const _AcceptOfferIntent(),
-        const SingleActivator(LogicalKeyboardKey.enter, control: true, shift: true): const _RejectOfferIntent(),
+        const SingleActivator(LogicalKeyboardKey.enter, control: true):
+            const _AcceptOfferIntent(),
+        const SingleActivator(LogicalKeyboardKey.enter,
+            control: true, shift: true): const _RejectOfferIntent(),
       },
     };
     final actions = <Type, Action<Intent>>{
-      _CloseNegotiationIntent: CallbackAction<_CloseNegotiationIntent>(onInvoke: (_) {
+      _CloseNegotiationIntent:
+          CallbackAction<_CloseNegotiationIntent>(onInvoke: (_) {
         Navigator.pop(context);
         return null;
       }),
@@ -334,106 +380,207 @@ class _ExistingOfferNegotiationScreenState
       },
     };
 
-    final onSurface = Theme.of(context).colorScheme.onSurface;
-
     Widget scaffold = Scaffold(
+      extendBodyBehindAppBar: false,
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
-        title: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              'Ongoing Negotiation',
-              style: TextStyle(fontWeight: FontWeight.w900, color: onSurface),
-            ),
-            if (_status != null && _status!.isNotEmpty) ...[
-              const SizedBox(width: 8),
-              Builder(
-                builder: (context) {
-                  final (label, color) = trade_models.getOfferStatusDisplayFromRaw(
-                    _status,
-                    isReceived: widget.isReceived,
-                    isCashOffer: _isCashOffer,
-                  );
-                  return Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: color.withValues(alpha: 0.15),
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: color.withValues(alpha: 0.5)),
-                    ),
-                    child: Text(label, style: TextStyle(color: color, fontWeight: FontWeight.bold, fontSize: 11)),
-                  );
-                },
-              ),
-            ],
-          ],
+        title: Text(
+          'Negotiation',
+          style: TextStyle(
+            fontWeight: FontWeight.w900,
+            letterSpacing: -0.3,
+            color: onSurface,
+          ),
         ),
         backgroundColor: Colors.transparent,
         elevation: 0,
         centerTitle: true,
         leading: IconButton(
-          icon: Icon(Icons.arrow_back_ios_new, color: onSurface),
+          icon: Icon(Icons.arrow_back_ios_new_rounded, color: onSurface),
           onPressed: () => Navigator.pop(context),
         ),
         actions: [
           IconButton(
-            icon: Icon(Icons.chat_bubble_outline_rounded, color: primaryColor),
+            icon: Icon(Icons.chat_bubble_outline_rounded, color: accent),
             onPressed: _openChat,
             tooltip: 'Chat',
           ),
         ],
       ),
-      body: _isLoading
+      body: GestureDetector(
+        behavior: HitTestBehavior.deferToChild,
+        onTap: () {
+          final focus = FocusManager.instance.primaryFocus;
+          if (focus != null && focus.hasFocus) focus.unfocus();
+        },
+        child: _isLoading
           ? const BybataLoader()
-          : RefreshIndicator(
-              onRefresh: _loadOfferHistory,
-              child: SingleChildScrollView(
-                physics: const AlwaysScrollableScrollPhysics(),
-                padding: const EdgeInsets.fromLTRB(20, 0, 20, 40),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    _buildPartnerCard(primaryColor),
-                    const SizedBox(height: 16),
-                    _buildTradeContextCard(primaryColor),
-                    const SizedBox(height: 16),
-                    _buildStatusGuidanceCard(primaryColor, status),
-                    if (_loadError != null) ...[
-                      const SizedBox(height: 16),
-                      _buildInlineNotice(_loadError!, isError: true),
-                    ],
-                    const SizedBox(height: 20),
-                    if (_offerTimeline != null && _offerTimeline!.isNotEmpty) ...[
-                      Text(
-                        'Both you and ${widget.initiatorName} see the same offer history below.',
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: context.secondaryText,
-                          height: 1.35,
+          : Stack(
+              children: [
+                Positioned.fill(
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        colors: isDark
+                            ? [
+                                accent.withValues(alpha: 0.18),
+                                Theme.of(context).scaffoldBackgroundColor,
+                              ]
+                            : [
+                                accent.withValues(alpha: 0.10),
+                                Theme.of(context).scaffoldBackgroundColor,
+                              ],
+                      ),
+                    ),
+                  ),
+                ),
+                Positioned(
+                  top: -40,
+                  right: -30,
+                  child: IgnorePointer(
+                    child: Container(
+                      width: 180,
+                      height: 180,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: accent.withValues(alpha: isDark ? 0.12 : 0.08),
+                      ),
+                    ),
+                  ),
+                ),
+                RefreshIndicator(
+                  color: accent,
+                  onRefresh: _loadOfferHistory,
+                  child: ListView(
+                    physics: const AlwaysScrollableScrollPhysics(
+                      parent: BouncingScrollPhysics(),
+                    ),
+                    padding: EdgeInsets.fromLTRB(20, 4, 20, sticky ? 132 : 40),
+                    children: [
+                      SoftReveal(
+                        index: 0,
+                        child: _SwapHero(
+                          target: widget.targetTrade,
+                          offered: _offeredTrade,
+                          isCash: _isCashOffer,
+                          cashLabel: _latestOffer?.amount != null
+                              ? '${_latestOffer!.amount} BYC'
+                              : null,
+                          accent: accent,
                         ),
                       ),
-                      const SizedBox(height: 10),
-                      OfferTimelineWidget(
-                        timeline: _offerTimeline!,
-                        onCounterOfferTap: canCounterOffer ? (_) => _openCounterOffer() : null,
+                      const SizedBox(height: 18),
+                      SoftReveal(
+                        index: 1,
+                        child: _PartnerStrip(
+                          name: _partnerName,
+                          subtitle: widget.isReceived
+                              ? 'Offer from $_partnerName'
+                              : 'Negotiating with $_partnerName',
+                          statusLabel: statusLabel,
+                          statusColor: statusColor,
+                          accent: accent,
+                          onChat: _openChat,
+                        ),
                       ),
-                      const SizedBox(height: 24),
-                    ] else if (_offerTimeline != null && _offerTimeline!.isEmpty) ...[
-                      _buildTimelineEmptyState(primaryColor),
-                      const SizedBox(height: 24),
+                      const SizedBox(height: 14),
+                      SoftReveal(
+                        index: 2,
+                        child: Text(
+                          _guidanceFor(status),
+                          style: TextStyle(
+                            fontSize: 14,
+                            height: 1.4,
+                            fontWeight: FontWeight.w600,
+                            color: context.secondaryText,
+                          ),
+                        ),
+                      ),
+                      if (!_isCashOffer) ...[
+                        const SizedBox(height: 18),
+                        SoftReveal(
+                          index: 3,
+                          child: EvenTradePanel(
+                            tradeId: widget.targetTrade.id,
+                            offerId: widget.offerId,
+                            tradeStatus:
+                                widget.targetTrade.status.backendValue,
+                          ),
+                        ),
+                      ],
+                      if (_loadError != null) ...[
+                        const SizedBox(height: 14),
+                        SoftReveal(
+                          index: 4,
+                          child: _NoticeChip(
+                            message: _loadError!,
+                            isError: true,
+                          ),
+                        ),
+                      ],
+                      const SizedBox(height: 22),
+                      SoftReveal(
+                        index: 5,
+                        child: Text(
+                          'Offer history',
+                          style: TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w800,
+                            color: context.primaryText,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      SoftReveal(
+                        index: 6,
+                        child: Text(
+                          'You and $_partnerName see the same thread.',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: context.tertiaryText,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      if (_offerTimeline != null &&
+                          _offerTimeline!.isNotEmpty)
+                        SoftReveal(
+                          index: 7,
+                          child: OfferTimelineWidget(
+                            timeline: _offerTimeline!,
+                            onCounterOfferTap: canCounterOffer
+                                ? (_) => _openCounterOffer()
+                                : null,
+                          ),
+                        )
+                      else
+                        SoftReveal(
+                          index: 7,
+                          child: _EmptyHistory(
+                            failed: _offerTimeline == null,
+                          ),
+                        ),
                     ],
-                    _buildActionSection(
-                      primaryColor,
-                      canAcceptReject: canAcceptReject,
-                      canCounterOffer: canCounterOffer,
-                      canWithdraw: canWithdraw,
-                      status: status,
-                    ),
-                  ],
+                  ),
                 ),
-              ),
+              ],
             ),
+      ),
+      bottomNavigationBar: sticky && !_isLoading
+          ? _StickyActions(
+              accent: accent,
+              canAcceptReject: canAcceptReject,
+              canCounterOffer: canCounterOffer,
+              canWithdraw: canWithdraw,
+              onAccept: _acceptOffer,
+              onDecline: _rejectOffer,
+              onCounter: _openCounterOffer,
+              onWithdraw: _withdrawOffer,
+              onChat: _openChat,
+            )
+          : null,
     );
 
     final hasKeyboard = kIsWeb ||
@@ -443,352 +590,513 @@ class _ExistingOfferNegotiationScreenState
     if (hasKeyboard) {
       return Shortcuts(
         shortcuts: shortcuts,
-        child: Actions(
-          actions: actions,
-          child: scaffold,
-        ),
+        child: Actions(actions: actions, child: scaffold),
       );
     }
     return scaffold;
   }
+}
 
-  Widget _buildInlineNotice(String message, {bool isError = false}) {
-    final accent = isError ? Colors.orange : Theme.of(context).primaryColor;
+class _SwapHero extends StatelessWidget {
+  final trade_models.Trade target;
+  final trade_models.Trade? offered;
+  final bool isCash;
+  final String? cashLabel;
+  final Color accent;
+
+  const _SwapHero({
+    required this.target,
+    required this.offered,
+    required this.isCash,
+    required this.cashLabel,
+    required this.accent,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          isCash ? 'Cash offer' : 'Item swap',
+          style: TextStyle(
+            fontSize: 28,
+            fontWeight: FontWeight.w900,
+            letterSpacing: -0.8,
+            color: context.primaryText,
+          ),
+        ),
+        const SizedBox(height: 6),
+        Text(
+          isCash
+              ? 'BYC bid against ${target.title}'
+              : 'Two listings in one deal',
+          style: TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w600,
+            color: context.secondaryText,
+          ),
+        ),
+        const SizedBox(height: 18),
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              child: _ItemTile(
+                label: 'Their item',
+                trade: target,
+                accent: accent,
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.only(top: 54),
+              child: Container(
+                width: 42,
+                height: 42,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: accent.withValues(alpha: 0.14),
+                ),
+                child: Icon(
+                  isCash ? Icons.payments_rounded : Icons.swap_horiz_rounded,
+                  color: accent,
+                ),
+              ),
+            ),
+            Expanded(
+              child: isCash
+                  ? _CashTile(label: cashLabel ?? 'BYC', accent: accent)
+                  : _ItemTile(
+                      label: 'Your offer',
+                      trade: offered,
+                      accent: accent,
+                      fallbackTitle: 'Item offer',
+                    ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+}
+
+class _ItemTile extends StatelessWidget {
+  final String label;
+  final trade_models.Trade? trade;
+  final Color accent;
+  final String fallbackTitle;
+
+  const _ItemTile({
+    required this.label,
+    required this.trade,
+    required this.accent,
+    this.fallbackTitle = 'Listing',
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final title = trade?.title ?? fallbackTitle;
+    return Column(
+      children: [
+        AspectRatio(
+          aspectRatio: 1,
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(28),
+              boxShadow: [
+                BoxShadow(
+                  color: accent.withValues(alpha: 0.18),
+                  blurRadius: 24,
+                  offset: const Offset(0, 10),
+                ),
+              ],
+            ),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(28),
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  if (trade == null) {
+                    return ColoredBox(
+                      color: accent.withValues(alpha: 0.12),
+                      child: Icon(Icons.inventory_2_outlined,
+                          color: accent, size: 36),
+                    );
+                  }
+                  return TradeListingPreview(
+                    trade: trade!,
+                    width: constraints.maxWidth,
+                    height: constraints.maxHeight,
+                    borderRadius: BorderRadius.circular(28),
+                  );
+                },
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(height: 10),
+        Text(
+          label,
+          style: TextStyle(
+            fontSize: 11,
+            fontWeight: FontWeight.w800,
+            letterSpacing: 0.4,
+            color: context.tertiaryText,
+          ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          title,
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            fontSize: 13,
+            fontWeight: FontWeight.w800,
+            height: 1.25,
+            color: context.primaryText,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _CashTile extends StatelessWidget {
+  final String label;
+  final Color accent;
+
+  const _CashTile({required this.label, required this.accent});
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        AspectRatio(
+          aspectRatio: 1,
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(28),
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  accent.withValues(alpha: 0.22),
+                  accent.withValues(alpha: 0.08),
+                ],
+              ),
+            ),
+            child: Center(
+              child: Text(
+                label,
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 22,
+                  fontWeight: FontWeight.w900,
+                  color: accent,
+                ),
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(height: 10),
+        Text(
+          'Cash bid',
+          style: TextStyle(
+            fontSize: 11,
+            fontWeight: FontWeight.w800,
+            letterSpacing: 0.4,
+            color: context.tertiaryText,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _PartnerStrip extends StatelessWidget {
+  final String name;
+  final String subtitle;
+  final String statusLabel;
+  final Color statusColor;
+  final Color accent;
+  final VoidCallback onChat;
+
+  const _PartnerStrip({
+    required this.name,
+    required this.subtitle,
+    required this.statusLabel,
+    required this.statusColor,
+    required this.accent,
+    required this.onChat,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        CircleAvatar(
+          radius: 22,
+          backgroundColor: accent.withValues(alpha: 0.14),
+          child: Text(
+            name.isEmpty ? '?' : name[0].toUpperCase(),
+            style: TextStyle(
+              fontWeight: FontWeight.w900,
+              color: accent,
+            ),
+          ),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                subtitle,
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w800,
+                  color: context.primaryText,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(
+                  color: statusColor.withValues(alpha: 0.14),
+                  borderRadius: BorderRadius.circular(999),
+                ),
+                child: Text(
+                  statusLabel,
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w800,
+                    color: statusColor,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+        IconButton.filledTonal(
+          onPressed: onChat,
+          icon: const Icon(Icons.chat_bubble_outline_rounded, size: 18),
+          style: IconButton.styleFrom(
+            foregroundColor: accent,
+            backgroundColor: accent.withValues(alpha: 0.12),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _NoticeChip extends StatelessWidget {
+  final String message;
+  final bool isError;
+
+  const _NoticeChip({required this.message, this.isError = false});
+
+  @override
+  Widget build(BuildContext context) {
+    final accent = isError ? Colors.orange : AppTheme.tradeColor;
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: accent.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: accent.withValues(alpha: 0.35)),
+        borderRadius: BorderRadius.circular(16),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Icon(
-            isError ? Icons.info_outline : Icons.lightbulb_outline,
-            size: 20,
-            color: isError ? Colors.orange.shade800 : accent,
+            isError ? Icons.info_outline_rounded : Icons.lightbulb_outline,
+            size: 18,
+            color: accent,
           ),
           const SizedBox(width: 10),
           Expanded(
             child: Text(
               message,
-              style: TextStyle(fontSize: 13, color: context.secondaryText, height: 1.35),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildPartnerCard(Color primaryColor) {
-    final partnerName = widget.isReceived
-        ? widget.initiatorName
-        : widget.targetTrade.owner.name;
-    final role = widget.isReceived ? 'Offer from' : 'Negotiating with';
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: context.surfaceCardDecoration(radius: 16),
-      child: Row(
-        children: [
-          CircleAvatar(
-            radius: 26,
-            backgroundColor: primaryColor.withValues(alpha: 0.12),
-            child: Icon(Icons.person_outline, color: primaryColor, size: 28),
-          ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  role,
-                  style: TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w800,
-                    color: context.tertiaryText,
-                    letterSpacing: 0.8,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  partnerName,
-                  style: TextStyle(
-                    fontSize: 17,
-                    fontWeight: FontWeight.w800,
-                    color: context.primaryText,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  widget.isReceived
-                      ? 'Review their proposal and respond below.'
-                      : 'Waiting for the listing owner to respond.',
-                  style: TextStyle(fontSize: 12, color: context.secondaryText, height: 1.3),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildStatusGuidanceCard(Color primaryColor, String status) {
-    final (label, color) = trade_models.getOfferStatusDisplayFromRaw(
-      _status,
-      isReceived: widget.isReceived,
-      isCashOffer: _isCashOffer,
-    );
-    String guidance;
-    if (status == 'pending') {
-      if (_isLatestOfferAuthoredByMe) {
-        guidance = widget.isReceived
-            ? 'Waiting for the other party to respond to your counter-offer. You can message them in chat.'
-            : 'Your counter-offer was sent. You can send another counter if they reply, or wait for their response.';
-      } else if (widget.isReceived) {
-        guidance = _isLatestOfferFromBidder
-            ? 'Accept their terms, decline, or counter with items or cash you want from them.'
-            : 'Review their counter-offer and respond with accept, decline, or your own counter.';
-      } else {
-        guidance =
-            'Send a counter-offer with your item or cash offer. Negotiation continues until someone accepts or declines.';
-      }
-    } else if (status.contains('accepted')) {
-      guidance = 'Complete the trade in chat and finalize when you have both agreed on handoff.';
-    } else {
-      guidance = 'This negotiation is closed. Open chat if you need to coordinate.';
-    }
-
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: context.surfaceCardDecoration(radius: 16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                decoration: BoxDecoration(
-                  color: color.withValues(alpha: 0.15),
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: color.withValues(alpha: 0.4)),
-                ),
-                child: Text(
-                  label,
-                  style: TextStyle(color: color, fontWeight: FontWeight.w800, fontSize: 12),
-                ),
+              style: TextStyle(
+                fontSize: 13,
+                height: 1.35,
+                color: context.secondaryText,
               ),
-            ],
-          ),
-          const SizedBox(height: 10),
-          Text(
-            guidance,
-            style: TextStyle(fontSize: 13, color: context.secondaryText, height: 1.4),
+            ),
           ),
         ],
       ),
     );
   }
+}
 
-  Widget _buildTimelineEmptyState(Color primaryColor, {bool failed = false}) {
-    return Container(
-      padding: const EdgeInsets.all(24),
-      decoration: context.surfaceCardDecoration(radius: 16),
+class _EmptyHistory extends StatelessWidget {
+  final bool failed;
+
+  const _EmptyHistory({required this.failed});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 24),
       child: Column(
         children: [
           Icon(
-            Icons.history,
-            size: 40,
+            Icons.history_rounded,
+            size: 36,
             color: failed ? Colors.orange : context.tertiaryText,
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 10),
           Text(
-            failed ? 'Could not load offer history' : 'No offer history yet',
+            failed ? 'Could not load history' : 'No history yet',
             style: TextStyle(
-              fontWeight: FontWeight.w600,
+              fontWeight: FontWeight.w700,
               color: context.secondaryText,
-              fontSize: 14,
             ),
           ),
           const SizedBox(height: 4),
           Text(
-            failed ? 'Pull down to retry' : 'New proposals will show here',
-            style: TextStyle(color: context.tertiaryText, fontSize: 12),
+            failed ? 'Pull down to retry' : 'New proposals show up here',
+            style: TextStyle(fontSize: 12, color: context.tertiaryText),
           ),
         ],
       ),
     );
   }
+}
 
-  Widget _buildTradeContextCard(Color primaryColor) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: context.surfaceCardDecoration(radius: 16),
-      child: Row(
-        children: [
-          if (widget.targetTrade.listingMedia.hasMedia)
-            ClipRRect(
-              borderRadius: BorderRadius.circular(12),
-              child: TradeListingPreview(
-                trade: widget.targetTrade,
-                width: 60,
-                height: 60,
-                borderRadius: BorderRadius.circular(12),
-              ),
-            ),
-          if (widget.targetTrade.listingMedia.hasMedia) const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'TRADING FOR',
-                  style: TextStyle(
-                    fontSize: 10,
-                    fontWeight: FontWeight.w900,
-                    color: context.tertiaryText,
-                    letterSpacing: 1.2,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  widget.targetTrade.title,
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                    color: context.primaryText,
-                  ),
-                ),
-                Text(
-                  widget.targetTrade.categoryName,
-                  style: TextStyle(
-                    color: primaryColor,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
+class _StickyActions extends StatelessWidget {
+  final Color accent;
+  final bool canAcceptReject;
+  final bool canCounterOffer;
+  final bool canWithdraw;
+  final VoidCallback onAccept;
+  final VoidCallback onDecline;
+  final VoidCallback onCounter;
+  final VoidCallback onWithdraw;
+  final VoidCallback onChat;
 
-  Widget _buildActionSection(
-    Color primaryColor, {
-    required bool canAcceptReject,
-    required bool canCounterOffer,
-    required bool canWithdraw,
-    required String status,
-  }) {
-    final hasPrimaryActions = canAcceptReject || canCounterOffer || canWithdraw;
+  const _StickyActions({
+    required this.accent,
+    required this.canAcceptReject,
+    required this.canCounterOffer,
+    required this.canWithdraw,
+    required this.onAccept,
+    required this.onDecline,
+    required this.onCounter,
+    required this.onWithdraw,
+    required this.onChat,
+  });
 
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: context.surfaceCardDecoration(radius: 16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Row(
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return Material(
+      elevation: 12,
+      color: isDark
+          ? Theme.of(context).colorScheme.surface.withValues(alpha: 0.96)
+          : Colors.white.withValues(alpha: 0.96),
+      child: SafeArea(
+        top: false,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(Icons.touch_app_outlined, color: primaryColor, size: 20),
-              const SizedBox(width: 8),
-              Text(
-                'What would you like to do?',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w700,
-                  color: context.primaryText,
+              if (canAcceptReject)
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: onDecline,
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: AppColors.error,
+                          side: BorderSide(
+                              color: AppColors.error.withValues(alpha: 0.5)),
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                        ),
+                        child: const Text('Decline'),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      flex: 2,
+                      child: FilledButton(
+                        onPressed: onAccept,
+                        style: FilledButton.styleFrom(
+                          backgroundColor: AppTheme.successColor,
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                        ),
+                        child: const Text('Accept'),
+                      ),
+                    ),
+                  ],
                 ),
-              ),
+              if (canAcceptReject && (canCounterOffer || canWithdraw))
+                const SizedBox(height: 8),
+              if (canCounterOffer || canWithdraw || !canAcceptReject)
+                Row(
+                  children: [
+                    if (canCounterOffer)
+                      Expanded(
+                        child: FilledButton(
+                          onPressed: onCounter,
+                          style: FilledButton.styleFrom(
+                            backgroundColor: accent,
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                          ),
+                          child: const Text('Counter'),
+                        ),
+                      ),
+                    if (canCounterOffer && canWithdraw) const SizedBox(width: 10),
+                    if (canWithdraw)
+                      Expanded(
+                        child: OutlinedButton(
+                          onPressed: onWithdraw,
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: AppColors.warning,
+                            side: BorderSide(
+                                color:
+                                    AppColors.warning.withValues(alpha: 0.5)),
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                          ),
+                          child: const Text('Withdraw'),
+                        ),
+                      ),
+                    if (!canAcceptReject && !canCounterOffer && !canWithdraw)
+                      Expanded(
+                        child: OutlinedButton.icon(
+                          onPressed: onChat,
+                          icon: const Icon(Icons.chat_bubble_outline, size: 18),
+                          label: const Text('Open chat'),
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: accent,
+                            side: BorderSide(color: accent),
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
             ],
           ),
-          if (!hasPrimaryActions) ...[
-            const SizedBox(height: 12),
-            Text(
-              'No response needed — this offer is no longer pending.',
-              style: TextStyle(fontSize: 13, color: context.secondaryText, height: 1.35),
-            ),
-          ],
-          const SizedBox(height: 16),
-          if (canAcceptReject) ...[
-            Row(
-              children: [
-                Expanded(
-                  child: OutlinedButton.icon(
-                    onPressed: _rejectOffer,
-                    icon: const Icon(Icons.close, size: 18),
-                    label: const Text('Decline'),
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: Colors.red,
-                      side: const BorderSide(color: Colors.red),
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: FilledButton.icon(
-                    onPressed: _acceptOffer,
-                    icon: const Icon(Icons.check, size: 18),
-                    label: const Text('Accept Offer'),
-                    style: FilledButton.styleFrom(
-                      backgroundColor: Colors.green,
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            if (canCounterOffer) const SizedBox(height: 12),
-          ],
-          if (canCounterOffer)
-            SizedBox(
-              width: double.infinity,
-              child: FilledButton.icon(
-                onPressed: _openCounterOffer,
-                icon: const Icon(Icons.swap_horiz, size: 18),
-                label: const Text('Make Counter-Offer'),
-                style: FilledButton.styleFrom(
-                  backgroundColor: primaryColor,
-                  padding: const EdgeInsets.symmetric(vertical: 12),
-                ),
-              ),
-            ),
-          if (canWithdraw) ...[
-            const SizedBox(height: 12),
-            SizedBox(
-              width: double.infinity,
-              child: OutlinedButton.icon(
-                onPressed: _withdrawOffer,
-                icon: const Icon(Icons.undo, size: 18),
-                label: const Text('Withdraw Offer'),
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: Colors.orange,
-                  side: const BorderSide(color: Colors.orange),
-                  padding: const EdgeInsets.symmetric(vertical: 12),
-                ),
-              ),
-            ),
-          ],
-          const SizedBox(height: 16),
-          SizedBox(
-            width: double.infinity,
-            child: OutlinedButton.icon(
-              onPressed: _openChat,
-              icon: const Icon(Icons.chat_bubble_outline, size: 18),
-              label: const Text('Open Chat'),
-              style: OutlinedButton.styleFrom(
-                foregroundColor: primaryColor,
-                side: BorderSide(color: primaryColor),
-                padding: const EdgeInsets.symmetric(vertical: 12),
-              ),
-            ),
-          ),
-        ],
+        ),
       ),
     );
   }

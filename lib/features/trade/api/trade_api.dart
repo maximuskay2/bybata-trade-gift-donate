@@ -204,6 +204,15 @@ class TradeApi {
     return List<Map<String, dynamic>>.from((res.data as List).map((e) => Map<String, dynamic>.from(e as Map)));
   }
 
+  /// Offers the signed-in user sent or received (includes IN_OFFER trades).
+  Future<Map<String, dynamic>> listMyOffers({int page = 1, int size = 50}) async {
+    final res = await _dio.get(
+      '/v1/trades/offers/mine',
+      queryParameters: {'page': page, 'size': size},
+    );
+    return Map<String, dynamic>.from(res.data as Map);
+  }
+
   Future<Map<String, dynamic>> createOffer(
     String tradeId, {
     String? amount,

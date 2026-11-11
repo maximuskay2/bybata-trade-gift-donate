@@ -336,8 +336,11 @@ class _NegotiationScreenState extends State<NegotiationScreen> {
         ],
       ),
       body: GestureDetector(
-        behavior: HitTestBehavior.opaque,
-        onTap: () => FocusScope.of(context).unfocus(),
+        behavior: HitTestBehavior.deferToChild,
+        onTap: () {
+          final focus = FocusManager.instance.primaryFocus;
+          if (focus != null && focus.hasFocus) focus.unfocus();
+        },
         child: Form(
           key: _formKey,
           child: SingleChildScrollView(

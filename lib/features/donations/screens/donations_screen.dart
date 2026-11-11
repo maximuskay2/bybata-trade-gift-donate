@@ -17,7 +17,6 @@ import '../../../core/utils/share_utils.dart';
 import '../../chat/providers/chat_provider.dart';
 import '../../chat/models/chat_conversation.dart';
 import 'donation_chat_screen.dart';
-import 'donation_history_screen.dart';
 import '../../../core/compliance/ios_campaign_support.dart';
 import '../models/donation_models.dart';
 import '../providers/campaign_provider.dart';
@@ -26,27 +25,55 @@ import '../../feed/mappers/social_listing_mapper.dart';
 import '../../feed/models/social_listing_card_data.dart';
 import '../../feed/widgets/social_feed_list.dart';
 import 'package:bybata/core/navigation/guarded_navigator.dart';
+import '../../../core/motion/create_stage_route.dart';
+import '../../../core/motion/hero_stage.dart';
+import '../../../core/motion/hub_atmosphere.dart';
+import '../../../core/motion/hub_create_rail.dart';
+import '../../../core/motion/hub_deck_bar.dart';
+import '../../../core/motion/hub_stage_bus.dart';
+import '../../../core/motion/soft_reveal.dart';
+import '../../../core/navigation/route_observer.dart';
+import 'create_campaign_screen.dart';
+import '../../../core/motion/living_slide.dart';
+import '../../../core/motion/stage_controller.dart';
+import '../../../core/providers/wallet_provider.dart';
+import '../../../core/utils/haptic_utils.dart';
+import '../../../core/widgets/app_toast.dart';
+import '../../stage/living_slide_mapper.dart';
+import '../widgets/donate_give_act.dart';
 
 class DonationsScreen extends StatefulWidget {
   /// Optional tab to open (0 browse, 1 my campaigns, 2 requests, 3 history).
   final int initialTabIndex;
+  final String? stageFocusId;
 
-  const DonationsScreen({super.key, this.initialTabIndex = 0});
+  const DonationsScreen({
+    super.key,
+    this.initialTabIndex = 0,
+    this.stageFocusId,
+  });
 
   @override
   State<DonationsScreen> createState() => _DonationsScreenState();
 }
 
 class _DonationsScreenState extends State<DonationsScreen>
-    with SingleTickerProviderStateMixin, WidgetsBindingObserver {
+    with SingleTickerProviderStateMixin, WidgetsBindingObserver, RouteAware {
   late TabController _tabController;
   int _currentIndex = 0;
   int _adFeedRefresh = 0;
   bool _didInitialLoad = false;
+  final StageController _living = StageController();
+  final DonateDraft _donateDraft = DonateDraft();
+  List<LivingSlide> _livingSlides = const [];
+  bool _openedStageFocus = false;
+  String? _pendingFocus;
 
   @override
   void initState() {
     super.initState();
+    _living.addListener(_onLivingChanged);
+    HubStageBus.register(HubStageBus.donate, _openLinked);
     WidgetsBinding.instance.addObserver(this);
     final initialTab = widget.initialTabIndex.clamp(0, 3);
     _tabController = TabController(
@@ -82,7 +109,9 @@ class _DonationsScreenState extends State<DonationsScreen>
     campaignProvider.loadCampaigns(
       status: CampaignStatus.active,
       force: shouldForce,
-    );
+    ).whenComplete(() {
+      if (mounted) _maybeOpenStageFocus();
+    });
 
     if (auth.isAuthenticated) {
       // Load account-specific tabs after browse feed so they cannot clear the
@@ -112,8 +141,16 @@ class _DonationsScreenState extends State<DonationsScreen>
     }
   }
 
-  /// Back from hub: inner tab → browse tab, then pop route, else home.
+  void _onLivingChanged() {
+    if (mounted) setState(() {});
+  }
+
+  /// Back from hub: stage layers, then inner tab → browse tab, then pop route.
   void _handleHubBack() {
+    if (_living.isOpen) {
+      _living.back();
+      return;
+    }
     if (_tabController.index > 0) {
       _tabController.animateTo(0);
       return;
@@ -126,11 +163,48 @@ class _DonationsScreenState extends State<DonationsScreen>
   }
 
   bool get _canPopHub =>
-      _tabController.index == 0 && Navigator.canPop(context);
+      !_living.isOpen &&
+      _tabController.index == 0 &&
+      Navigator.canPop(context);
+
+  void _openLinked(String id) {
+    _pendingFocus = id;
+    _openedStageFocus = false;
+    _maybeOpenStageFocus();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final route = ModalRoute.of(context);
+    if (route is PageRoute) {
+      appRouteObserver.unsubscribe(this);
+      appRouteObserver.subscribe(this, route);
+      HubStageBus.markCurrent(HubStageBus.donate, route.isCurrent);
+    }
+  }
+
+  @override
+  void didPush() => HubStageBus.markCurrent(HubStageBus.donate, true);
+
+  @override
+  void didPopNext() => HubStageBus.markCurrent(HubStageBus.donate, true);
+
+  @override
+  void didPushNext() => HubStageBus.markCurrent(HubStageBus.donate, false);
+
+  @override
+  void didPop() => HubStageBus.markCurrent(HubStageBus.donate, false);
 
   @override
   void dispose() {
+    HubStageBus.markCurrent(HubStageBus.donate, false);
+    HubStageBus.unregister(HubStageBus.donate, _openLinked);
+    appRouteObserver.unsubscribe(this);
     WidgetsBinding.instance.removeObserver(this);
+    _living.removeListener(_onLivingChanged);
+    _living.dispose();
+    _donateDraft.dispose();
     _tabController.removeListener(_handleTabChange);
     _tabController.dispose();
     super.dispose();
@@ -183,6 +257,10 @@ class _DonationsScreenState extends State<DonationsScreen>
         extendBody: true,
         body: Stack(
           children: [
+            HubAtmosphere(
+              accent: AppTheme.donationColor,
+              visible: !_living.isOpen,
+            ),
             Column(
               children: [
                 HubScreenTopBar(
@@ -192,12 +270,8 @@ class _DonationsScreenState extends State<DonationsScreen>
                     HubTopBarIconButton(
                       icon: Icons.volunteer_activism_rounded,
                       onTap: () {
-                        if (AppRoutes.requireSignIn(context)) return;
-                        GuardedNavigator.push(context, 
-                          MaterialPageRoute(
-                            builder: (_) => const DonationHistoryScreen(),
-                          ),
-                        );
+                        if (!guardHubTabForGuest(context, 3)) return;
+                        _tabController.animateTo(3);
                       },
                       isDark: isDark,
                       iconColor: AppTheme.donationColor,
@@ -231,134 +305,83 @@ class _DonationsScreenState extends State<DonationsScreen>
                 ),
               ],
             ),
-            Align(
-              alignment: Alignment.centerRight,
-              child: _buildRightMiddleCreateDonationButton(),
-            ),
+            if (!_living.isOpen)
+              Align(
+                alignment: Alignment.centerRight,
+                child: HubCreateRail(
+                  color: AppTheme.donationColor,
+                  label: 'CREATE DONATION',
+                  onTap: _openCreateCampaign,
+                ),
+              ),
+            if (_living.isOpen && _livingSlides.isNotEmpty)
+              Positioned.fill(child: _donateStage()),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildRightMiddleCreateDonationButton() {
-    final scheme = Theme.of(context).colorScheme;
-    return GestureDetector(
-      onTap: () => AppRoutes.navigateToCreateCampaign(context),
-      child: Container(
-        height: 130,
-        width: 48,
-        decoration: BoxDecoration(
-          color: AppTheme.donationColor,
-          borderRadius: const BorderRadius.only(
-            topLeft: Radius.circular(24),
-            bottomLeft: Radius.circular(24),
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: AppTheme.donationColor.withValues(alpha: 0.3),
-              blurRadius: 20,
-              offset: const Offset(-4, 6),
-            ),
-          ],
-        ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              Icons.add_rounded,
-              color: Colors.white,
-              size: 22,
-            ),
-            const SizedBox(height: 8),
-            RotatedBox(
-              quarterTurns: 3,
-              child: SizedBox(
-                width: 85,
-                child: FittedBox(
-                  fit: BoxFit.scaleDown,
-                  child: Text(
-                    'CREATE DONATION',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 10,
-                      fontWeight: FontWeight.w900,
-                      letterSpacing: 1.5,
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ],
-        ),
+  Widget _donateStage() {
+    return LivingHeroStage(
+      controller: _living,
+      stageColor: AppTheme.donationColor,
+      slides: _livingSlides,
+      commitLabel: 'Give now',
+      markIcon: Icons.favorite_rounded,
+      numberTick: _donateDraft,
+      numberText: () => _donateDraft.label,
+      railBuilder: (slide) => DonateAmountRail(draft: _donateDraft),
+      actBuilder: (slide) {
+        final campaign = slide.source;
+        if (campaign is! Campaign) return const SizedBox.shrink();
+        return DonateGiveFields(campaign: campaign, draft: _donateDraft);
+      },
+      beforeBuilder: (slide) async {
+        final campaign = slide.source;
+        if (campaign is Campaign &&
+            CampaignSupportCompliance.blocksInAppDonations) {
+          CampaignSupportCompliance.handleSupportTap(
+            context,
+            campaign: campaign,
+          );
+          return false;
+        }
+        return !AppRoutes.requireSignIn(context);
+      },
+      onEdit: _editCampaignSlide,
+      onCommit: _commitDonation,
+    );
+  }
+
+  void _openCreateCampaign() {
+    if (AppRoutes.requireSignIn(context)) return;
+    GuardedNavigator.push(
+      context,
+      CreateStageRoute(
+        color: AppTheme.donationColor,
+        origin: stageCardOrigin(context),
+        builder: (_) => const CreateCampaignScreen(),
       ),
     );
   }
 
   Widget _buildFluidTabSwitcher() {
-    List<String> labels = ["Browse", "My Donations", "Requests", "History"];
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    
-    return Container(
-      margin: const EdgeInsets.fromLTRB(20, 10, 20, 15),
-      height: 54,
-      decoration: BoxDecoration(
-        color: isDark ? Colors.white.withValues(alpha: 0.04) : Colors.black.withValues(alpha: 0.03),
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Stack(
-        children: [
-          AnimatedAlign(
-            duration: const Duration(milliseconds: 300),
-            curve: Curves.easeOutCubic,
-            alignment: Alignment(-1.0 + (_currentIndex * (2.0 / (labels.length - 1))), 0),
-            child: FractionallySizedBox(
-              widthFactor: 1 / labels.length,
-              child: Container(
-                margin: const EdgeInsets.all(4),
-                decoration: BoxDecoration(
-                  color: isDark ? const Color(0xFF1E1A28) : Colors.white,
-                  borderRadius: BorderRadius.circular(16),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.05),
-                      blurRadius: 8,
-                      offset: const Offset(0, 2),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-          Row(
-            children: List.generate(labels.length, (index) => Expanded(
-              child: GestureDetector(
-                onTap: () {
-                  if (!guardHubTabForGuest(context, index)) return;
-                  _tabController.animateTo(index);
-                },
-                child: Center(
-                  child: Text(
-                    labels[index],
-                    style: TextStyle(
-                      color: _currentIndex == index
-                          ? (isDark ? Colors.white : const Color(0xFF1C1921))
-                          : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.45),
-                      fontWeight: _currentIndex == index ? FontWeight.w900 : FontWeight.w700,
-                      fontSize: 11,
-                      letterSpacing: -0.1,
-                    ),
-                  ),
-                ),
-              ),
-            )),
-          ),
+    return SoftReveal(
+      index: 0,
+      travel: 10,
+      child: HubDeckBar(
+        controller: _tabController,
+        accent: AppTheme.donationColor,
+        activity: const [
+          HubActivity('Requests', 2),
+          HubActivity('History', 3),
         ],
+        guard: (index) => guardHubTabForGuest(context, index),
       ),
     );
   }
 
-  // --- TAB 1: BROWSE ---
   Widget _buildAvailableDonationsTab(BuildContext context) {
     return Consumer<CampaignProvider>(
       builder: (context, campaignProvider, child) {
@@ -386,32 +409,44 @@ class _DonationsScreenState extends State<DonationsScreen>
             );
           },
           header: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(20, 4, 20, 12),
-              child: _buildSectionHeader(
-                'Featured Donations',
-                Icons.star_rounded,
-                AppTheme.karmaColor,
+            SoftReveal(
+              index: 1,
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(20, 4, 20, 12),
+                child: _buildSectionHeader(
+                  'Featured Donations',
+                  Icons.star_rounded,
+                  AppTheme.karmaColor,
+                ),
               ),
             ),
-            _build3DFeaturedCarousel(campaignProvider),
+            SoftReveal(
+              index: 2,
+              child: _build3DFeaturedCarousel(campaignProvider),
+            ),
             const SizedBox(height: 16),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20),
-              child: AdPlacementSection(
-                key: ValueKey('campaign_ads_$_adFeedRefresh'),
-                placementKey: 'campaign_feed',
-                title: 'Sponsored Cause',
-                refreshToken: _adFeedRefresh,
+            SoftReveal(
+              index: 3,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                child: AdPlacementSection(
+                  key: ValueKey('campaign_ads_$_adFeedRefresh'),
+                  placementKey: 'campaign_feed',
+                  title: 'Sponsored Cause',
+                  refreshToken: _adFeedRefresh,
+                ),
               ),
             ),
             const SizedBox(height: 24),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20),
-              child: _buildSectionHeader(
-                'Active Campaigns (${campaigns.length})',
-                Icons.campaign_rounded,
-                AppTheme.donationColor,
+            SoftReveal(
+              index: 4,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                child: _buildSectionHeader(
+                  'Active Campaigns (${campaigns.length})',
+                  Icons.campaign_rounded,
+                  AppTheme.donationColor,
+                ),
               ),
             ),
             const SizedBox(height: 8),
@@ -468,7 +503,7 @@ class _DonationsScreenState extends State<DonationsScreen>
               'Tell your story with photos & goals',
               'Track donors in real time',
             ],
-            onCreate: () => AppRoutes.navigateToCreateCampaign(context),
+            onCreate: () => _openCreateCampaign(),
           );
         }
 
@@ -483,7 +518,7 @@ class _DonationsScreenState extends State<DonationsScreen>
                 return HubMineCreateBar(
                   accentColor: AppTheme.donationColor,
                   label: 'Start another campaign',
-                  onTap: () => AppRoutes.navigateToCreateCampaign(context),
+                  onTap: () => _openCreateCampaign(),
                 );
               }
               return _buildMyCampaignCard(myCampaigns[index]);
@@ -549,11 +584,15 @@ class _DonationsScreenState extends State<DonationsScreen>
   // --- REUSABLE CARD WRAPPERS ---
 
   Widget _buildCampaignCard(Campaign campaign) {
-    return Padding(
+    return Builder(
+      builder: (cardContext) => Padding(
       padding: const EdgeInsets.only(bottom: 14),
       child: _build3DContainer(
         child: DebouncedTap(
-          onTap: () => _showCampaignDetails(campaign),
+          onTap: () => _showCampaignDetails(
+            campaign,
+            origin: stageCardOrigin(cardContext),
+          ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -602,16 +641,21 @@ class _DonationsScreenState extends State<DonationsScreen>
           ),
         ),
       ),
+    ),
     );
   }
 
   Widget _buildMyCampaignCard(Campaign campaign) {
     final isDraft = campaign.status == CampaignStatus.draft;
-    return Padding(
+    return Builder(
+      builder: (cardContext) => Padding(
       padding: const EdgeInsets.only(bottom: 14),
       child: _build3DContainer(
         child: DebouncedTap(
-          onTap: () => _showCampaignDetails(campaign),
+          onTap: () => _showCampaignDetails(
+            campaign,
+            origin: stageCardOrigin(cardContext),
+          ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -647,6 +691,7 @@ class _DonationsScreenState extends State<DonationsScreen>
           ),
         ),
       ),
+    ),
     );
   }
 
@@ -847,10 +892,7 @@ class _DonationsScreenState extends State<DonationsScreen>
   }
 
   void _donateToCampaign(Campaign campaign) {
-    CampaignSupportCompliance.handleSupportTap(
-      context,
-      campaign: campaign,
-    );
+    _openCampaignStage(campaign, give: true);
   }
 
   void _shareCampaign(Campaign campaign) {
@@ -1084,7 +1126,7 @@ class _DonationsScreenState extends State<DonationsScreen>
                 Padding(
                   padding: const EdgeInsets.only(top: 24),
                   child: _build3DActionButton(
-                    onTap: () => AppRoutes.navigateToCreateCampaign(context),
+                    onTap: () => _openCreateCampaign(),
                     label: "Create Campaign",
                     color: AppTheme.primaryColor,
                   ),
@@ -1094,6 +1136,116 @@ class _DonationsScreenState extends State<DonationsScreen>
         ),
       );
 
-  void _showCampaignDetails(Campaign campaign) => AppRoutes.navigateToCampaignDetails(context, campaign);
+  void _showCampaignDetails(Campaign campaign, {Rect? origin}) {
+    _openCampaignStage(campaign, give: false, origin: origin);
+  }
+
+  void _openCampaignStage(Campaign campaign, {required bool give, Rect? origin}) {
+    if (give && CampaignSupportCompliance.blocksInAppDonations) {
+      CampaignSupportCompliance.handleSupportTap(context, campaign: campaign);
+      return;
+    }
+    final provider = context.read<CampaignProvider>();
+    final mine = _tabController.index == 1;
+    final list = mine ? provider.myCampaigns : provider.campaigns;
+    final pool = list.any((item) => item.id == campaign.id)
+        ? list
+        : <Campaign>[campaign];
+    final userId = context.read<AuthProvider>().currentUser?.id;
+    final slides = pool
+        .map(
+          (item) => LivingSlideMapper.fromCampaign(
+            item,
+            currentUserId: userId,
+          ),
+        )
+        .where((slide) => slide.id.isNotEmpty)
+        .toList();
+    if (slides.isEmpty) return;
+    final index = slides.indexWhere((slide) => slide.id == campaign.id);
+    final safe = index < 0 ? 0 : index;
+    _donateDraft.clear();
+    setState(() => _livingSlides = slides);
+    _living.open(slides[safe].id, origin: origin);
+    if (give && !slides[safe].isOwner) {
+      if (AppRoutes.requireSignIn(context)) return;
+      _living.openBuilder();
+    }
+  }
+
+  Future<void> _maybeOpenStageFocus() async {
+    final pending = _pendingFocus?.trim();
+    final id = (pending != null && pending.isNotEmpty)
+        ? pending
+        : widget.stageFocusId?.trim();
+    if (id == null || id.isEmpty || _openedStageFocus || !mounted) return;
+    final campaigns = context.read<CampaignProvider>().campaigns;
+    final match = campaigns.where((item) => item.id == id);
+    if (match.isNotEmpty) {
+      _openedStageFocus = true;
+      _openCampaignStage(match.first, give: false);
+      return;
+    }
+    _openedStageFocus = true;
+    final campaign = await context.read<CampaignProvider>().getCampaign(id);
+    if (!mounted || campaign == null) return;
+    _openCampaignStage(campaign, give: false);
+  }
+
+  Future<StageCommitResult?> _commitDonation(LivingSlide slide) async {
+    final campaign = slide.source is Campaign ? slide.source as Campaign : null;
+    if (campaign == null) return null;
+    if (CampaignSupportCompliance.blocksInAppDonations) {
+      CampaignSupportCompliance.handleSupportTap(context, campaign: campaign);
+      return null;
+    }
+    if (AppRoutes.requireSignIn(context)) return null;
+    final amount = _donateDraft.amount;
+    if (amount == null || amount <= 0) {
+      HapticUtils.error();
+      AppToast.show(context, 'Choose an amount');
+      return null;
+    }
+    final balance = context.read<WalletProvider>().bycBalance;
+    if (amount > balance) {
+      HapticUtils.error();
+      AppToast.show(context, 'Not enough BYC');
+      return null;
+    }
+    final beforeRaised = campaign.raisedAmount;
+    final provider = context.read<CampaignProvider>();
+    final note = _donateDraft.note.text.trim();
+    final donation = await provider.donateToCampaign(
+      campaign.id,
+      amount: amount,
+      currency: 'BYC',
+      isAnonymous: _donateDraft.anonymous,
+      message: note.isEmpty ? null : note,
+      rewardTierId: _donateDraft.tierId,
+    );
+    if (!mounted) return null;
+    if (donation == null) {
+      HapticUtils.error();
+      AppToast.show(context, provider.error ?? 'Could not give');
+      return null;
+    }
+    HapticUtils.heavy();
+    final raised = donation.campaign.raisedAmount;
+    final play = raised >= donation.campaign.goalAmount &&
+        raised > beforeRaised &&
+        GoalCheckSession.claim(campaign.id);
+    _donateDraft.clear();
+    return StageCommitResult(
+      'Thank you · \$${raised.toStringAsFixed(0)} raised',
+      playGoalCheck: play,
+    );
+  }
+
+  Future<void> _editCampaignSlide(LivingSlide slide) async {
+    final campaign = slide.source;
+    if (campaign is! Campaign) return;
+    if (AppRoutes.requireSignIn(context)) return;
+    AppRoutes.navigateToEditCampaign(context, campaign);
+  }
   void _showSnackBar(String m) => ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(m)));
 }

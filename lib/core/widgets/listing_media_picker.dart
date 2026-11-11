@@ -4,9 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 
 import '../constants/listing_media_constants.dart';
+import '../media/listing_capture_flow.dart';
 import '../models/listing_media.dart';
-import '../utils/image_crop_utils.dart';
-import '../utils/image_resize_utils.dart';
 import '../utils/permissions_helper.dart';
 import '../utils/video_processing_utils.dart';
 import 'image_source_picker_sheet.dart';
@@ -26,6 +25,8 @@ class ListingMediaPicker extends StatefulWidget {
   final String? moduleLabel;
   /// Fraud prevention: only allow live camera capture (no gallery).
   final bool cameraOnly;
+  /// Hide the big Take photo / Add video button — capture from the stage hero instead.
+  final bool hidePrimaryCapture;
 
   const ListingMediaPicker({
     super.key,
@@ -36,7 +37,137 @@ class ListingMediaPicker extends StatefulWidget {
     this.initial = const ListingMediaDraft(),
     this.moduleLabel,
     this.cameraOnly = true,
+    this.hidePrimaryCapture = false,
   });
+
+  /// Same capture path as the in-picker button — used by the stage “Add a photo” ring.
+  static Future<ListingMediaDraft?> captureInto(
+    BuildContext context, {
+    required ListingMediaDraft draft,
+    required Color accentColor,
+    String title = 'Add photos',
+    int maxImages = ListingMediaConstants.maxPhotosPerListing,
+    bool cameraOnly = true,
+  }) async {
+    if (draft.mediaType == ListingMediaType.video) {
+      return _captureVideoInto(
+        context,
+        draft: draft,
+        accentColor: accentColor,
+        cameraOnly: cameraOnly,
+      );
+    }
+    return _capturePhotoInto(
+      context,
+      draft: draft,
+      accentColor: accentColor,
+      title: title,
+      maxImages: maxImages,
+      cameraOnly: cameraOnly,
+    );
+  }
+
+  static Future<ListingMediaDraft?> _capturePhotoInto(
+    BuildContext context, {
+    required ListingMediaDraft draft,
+    required Color accentColor,
+    required String title,
+    required int maxImages,
+    required bool cameraOnly,
+  }) async {
+    if (draft.videoPath != null) {
+      AppToast.show(context, 'Remove video before adding photos.');
+      return null;
+    }
+    if (draft.imagePaths.length >= maxImages) {
+      AppToast.show(context, 'Maximum $maxImages images allowed.');
+      return null;
+    }
+    final source = await ImageSourcePickerSheet.show(
+      context,
+      title: title,
+      accentColor: accentColor,
+      maxImages: maxImages,
+      currentCount: draft.imagePaths.length,
+      cameraOnly: cameraOnly,
+    );
+    if (source == null || !context.mounted) return null;
+
+    File? accepted;
+    if (source == ImageSource.gallery) {
+      final picked = await ImagePicker().pickImage(
+        source: ImageSource.gallery,
+        imageQuality: 92,
+      );
+      if (picked == null || !context.mounted) return null;
+      accepted = await ListingCaptureFlow.acceptGalleryPhoto(
+        context,
+        sourcePath: picked.path,
+        stageColor: accentColor,
+      );
+    } else {
+      if (!await PermissionsHelper.requestCameraWithFallback(
+        context,
+        purpose: 'take a photo',
+      )) {
+        return null;
+      }
+      if (!context.mounted) return null;
+      accepted = await ListingCaptureFlow.takePhoto(
+        context,
+        stageColor: accentColor,
+      );
+    }
+    if (accepted == null) return null;
+    return ListingMediaDraft(
+      mediaType: ListingMediaType.image,
+      imagePaths: [...draft.imagePaths, accepted.path],
+    );
+  }
+
+  static Future<ListingMediaDraft?> _captureVideoInto(
+    BuildContext context, {
+    required ListingMediaDraft draft,
+    required Color accentColor,
+    required bool cameraOnly,
+  }) async {
+    if (draft.imagePaths.isNotEmpty) {
+      AppToast.show(context, 'Remove images before adding a video.');
+      return null;
+    }
+    if (!await PermissionsHelper.requestCameraWithFallback(
+      context,
+      purpose: cameraOnly ? 'record a video' : 'select a video',
+    )) {
+      return null;
+    }
+    if (!context.mounted) return null;
+
+    final ProcessedVideoResult? processed;
+    if (cameraOnly) {
+      processed = await ListingCaptureFlow.takeVideo(
+        context,
+        stageColor: accentColor,
+      );
+    } else {
+      final file = await ImagePicker().pickVideo(
+        source: ImageSource.gallery,
+        maxDuration: ListingMediaConstants.heroClipMax,
+      );
+      if (file == null || !context.mounted) return null;
+      processed = await ListingCaptureFlow.acceptGalleryVideo(
+        context,
+        sourcePath: file.path,
+        stageColor: accentColor,
+      );
+    }
+    if (processed == null) return null;
+    return ListingMediaDraft(
+      mediaType: ListingMediaType.video,
+      videoPath: processed.videoPath,
+      videoThumbnailPath: processed.thumbnailPath,
+    );
+  }
 
   @override
   State<ListingMediaPicker> createState() => _ListingMediaPickerState();
@@ -55,13 +186,49 @@ class _ListingMediaPickerState extends State<ListingMediaPicker> {
   @override
   void initState() {
     super.initState();
-    _mediaType = widget.initial.mediaType;
-    for (final p in widget.initial.imagePaths) {
-      final f = File(p);
-      if (f.existsSync()) _images.add(f);
+    _syncFromDraft(widget.initial);
+  }
+
+  @override
+  void didUpdateWidget(ListingMediaPicker oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (!_draftEquals(oldWidget.initial, widget.initial) &&
+        !_draftEquals(_currentDraft(), widget.initial)) {
+      setState(() => _syncFromDraft(widget.initial));
     }
-    _videoPath = widget.initial.videoPath;
-    _videoThumbnailPath = widget.initial.videoThumbnailPath;
+  }
+
+  bool _draftEquals(ListingMediaDraft a, ListingMediaDraft b) {
+    if (a.mediaType != b.mediaType) return false;
+    if (a.videoPath != b.videoPath) return false;
+    if (a.videoThumbnailPath != b.videoThumbnailPath) return false;
+    if (a.imagePaths.length != b.imagePaths.length) return false;
+    for (var i = 0; i < a.imagePaths.length; i++) {
+      if (a.imagePaths[i] != b.imagePaths[i]) return false;
+    }
+    return true;
+  }
+
+  ListingMediaDraft _currentDraft() {
+    return ListingMediaDraft(
+      mediaType: _mediaType,
+      imagePaths: _images.map((f) => f.path).toList(),
+      videoPath: _videoPath,
+      videoThumbnailPath: _videoThumbnailPath,
+    );
+  }
+
+  void _syncFromDraft(ListingMediaDraft draft) {
+    _mediaType = draft.mediaType;
+    _images
+      ..clear()
+      ..addAll(
+        draft.imagePaths
+            .map(File.new)
+            .where((f) => f.existsSync()),
+      );
+    _videoPath = draft.videoPath;
+    _videoThumbnailPath = draft.videoThumbnailPath;
   }
 
   void _notify() {
@@ -107,27 +274,35 @@ class _ListingMediaPickerState extends State<ListingMediaPicker> {
     );
     if (source == null || !mounted) return;
 
-    if (!await PermissionsHelper.requestCameraWithFallback(
-      context,
-      purpose: 'take a photo',
-    )) {
-      return;
-    }
-    final file = await _picker.pickImage(
-      source: ImageSource.camera,
-      imageQuality: 90,
-    );
-    if (file != null) {
-      if (!mounted) return;
-      final cropped = await ImageCropUtils.cropToFeedWidescreen(
-        context,
-        File(file.path),
+    File? accepted;
+    if (source == ImageSource.gallery) {
+      final picked = await _picker.pickImage(
+        source: ImageSource.gallery,
+        imageQuality: 92,
       );
-      if (cropped == null || !mounted) return;
-      final resized = await ImageResizeUtils.resizeToFeedAspectFile(cropped);
-      _images.add(resized);
+      if (picked == null || !mounted) return;
+      accepted = await ListingCaptureFlow.acceptGalleryPhoto(
+        context,
+        sourcePath: picked.path,
+        stageColor: widget.accentColor,
+      );
+    } else {
+      if (!await PermissionsHelper.requestCameraWithFallback(
+        context,
+        purpose: 'take a photo',
+      )) {
+        return;
+      }
+      if (!mounted) return;
+      accepted = await ListingCaptureFlow.takePhoto(
+        context,
+        stageColor: widget.accentColor,
+      );
     }
-    if (mounted) {
+    if (accepted != null) {
+      _images.add(accepted);
+    }
+    if (mounted && accepted != null) {
       setState(() => _mediaType = ListingMediaType.image);
       _notify();
     }
@@ -144,11 +319,7 @@ class _ListingMediaPickerState extends State<ListingMediaPicker> {
     )) {
       return;
     }
-    final file = await _picker.pickVideo(
-      source: widget.cameraOnly ? ImageSource.camera : ImageSource.gallery,
-      maxDuration: VideoProcessingUtils.maxDuration,
-    );
-    if (file == null || !mounted) return;
+    if (!mounted) return;
 
     setState(() {
       _processingVideo = true;
@@ -156,28 +327,49 @@ class _ListingMediaPickerState extends State<ListingMediaPicker> {
       _videoSizeLabel = null;
     });
 
-    final processed = await VideoProcessingUtils.prepareForUpload(
-      file.path,
-      onProgress: (p) {
-        if (mounted) setState(() => _videoProgress = p);
-      },
-    );
+    final ProcessedVideoResult? processed;
+    if (widget.cameraOnly) {
+      processed = await ListingCaptureFlow.takeVideo(
+        context,
+        stageColor: widget.accentColor,
+        onProgress: (p) {
+          if (mounted) setState(() => _videoProgress = p);
+        },
+      );
+    } else {
+      final file = await _picker.pickVideo(
+        source: ImageSource.gallery,
+        maxDuration: ListingMediaConstants.heroClipMax,
+      );
+      if (file == null || !mounted) {
+        setState(() => _processingVideo = false);
+        return;
+      }
+      processed = await ListingCaptureFlow.acceptGalleryVideo(
+        context,
+        sourcePath: file.path,
+        stageColor: widget.accentColor,
+        onProgress: (p) {
+          if (mounted) setState(() => _videoProgress = p);
+        },
+      );
+    }
 
     if (!mounted) return;
-    if (processed == null) {
+    final ready = processed;
+    if (ready == null) {
       setState(() => _processingVideo = false);
-      _snack('Videos must be 1 minute or shorter.');
       return;
     }
 
     setState(() {
-      _videoPath = processed.videoPath;
-      _videoThumbnailPath = processed.thumbnailPath;
+      _videoPath = ready.videoPath;
+      _videoThumbnailPath = ready.thumbnailPath;
       _mediaType = ListingMediaType.video;
       _processingVideo = false;
       _videoSizeLabel =
-          '${VideoProcessingUtils.formatSize(processed.compressedBytes)}'
-          ' (was ${VideoProcessingUtils.formatSize(processed.originalBytes)})';
+          '${VideoProcessingUtils.formatSize(ready.compressedBytes)}'
+          ' (was ${VideoProcessingUtils.formatSize(ready.originalBytes)})';
     });
     _notify();
   }
@@ -215,19 +407,25 @@ class _ListingMediaPickerState extends State<ListingMediaPicker> {
         const SizedBox(height: 14),
         if (_mediaType == ListingMediaType.image) ...[
           Text(
-            'Add up to ${widget.maxImages} photos · ${ListingMediaConstants.aspectRatioLabel}',
+            widget.hidePrimaryCapture
+                ? (_images.isEmpty
+                    ? 'Tap Add a photo above to capture. Up to ${widget.maxImages} photos.'
+                    : '${_images.length}/${widget.maxImages} photos · tap the circle above to add more')
+                : 'Add up to ${widget.maxImages} photos. The item is cut out before upload.',
             style: TextStyle(fontSize: 12, color: scheme.onSurface.withValues(alpha: 0.6)),
           ),
-          const SizedBox(height: 12),
-          ListingMediaActionButton(
-            accentColor: widget.accentColor,
-            icon: Icons.photo_camera_rounded,
-            label: widget.cameraOnly ? 'Take photo' : 'Add photos',
-            subtitle: _images.isEmpty
-                ? 'Tap to capture your first photo'
-                : '${_images.length}/${widget.maxImages} added · tap to add more',
-            onPressed: _pickImages,
-          ),
+          if (!widget.hidePrimaryCapture) ...[
+            const SizedBox(height: 12),
+            ListingMediaActionButton(
+              accentColor: widget.accentColor,
+              icon: Icons.photo_camera_rounded,
+              label: widget.cameraOnly ? 'Take photo' : 'Add photos',
+              subtitle: _images.isEmpty
+                  ? 'Tap to capture your first photo'
+                  : '${_images.length}/${widget.maxImages} added · tap to add more',
+              onPressed: _pickImages,
+            ),
+          ],
           if (_images.isNotEmpty) ...[
             const SizedBox(height: 12),
             Wrap(
@@ -278,20 +476,26 @@ class _ListingMediaPickerState extends State<ListingMediaPicker> {
           ],
         ] else ...[
           Text(
-            'One video · ${ListingMediaConstants.maxVideoDurationLabel} · auto-compressed',
+            widget.hidePrimaryCapture
+                ? (_videoPath == null
+                    ? 'Tap the circle above to record a ${ListingMediaConstants.heroClipMax.inSeconds}s video.'
+                    : 'Video ready · tap the circle above to replace it')
+                : 'One ${ListingMediaConstants.heroClipMax.inSeconds} second video. The poster is cut out.',
             style: TextStyle(fontSize: 12, color: scheme.onSurface.withValues(alpha: 0.6)),
           ),
-          const SizedBox(height: 12),
-          if (!_processingVideo)
-            ListingMediaActionButton(
-              accentColor: widget.accentColor,
-              icon: Icons.videocam_rounded,
-              label: _videoPath == null ? 'Add video' : 'Replace video',
-              subtitle: _videoPath == null
-                  ? 'Record a short clip of your item'
-                  : 'Tap to record a different video',
-              onPressed: _pickVideo,
-            ),
+          if (!widget.hidePrimaryCapture) ...[
+            const SizedBox(height: 12),
+            if (!_processingVideo)
+              ListingMediaActionButton(
+                accentColor: widget.accentColor,
+                icon: Icons.videocam_rounded,
+                label: _videoPath == null ? 'Add video' : 'Replace video',
+                subtitle: _videoPath == null
+                    ? 'Record a short clip of your item'
+                    : 'Tap to record a different video',
+                onPressed: _pickVideo,
+              ),
+          ],
           if (_processingVideo)
             Padding(
               padding: const EdgeInsets.symmetric(vertical: 12),

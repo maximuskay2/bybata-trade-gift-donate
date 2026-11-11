@@ -4,9 +4,6 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../core/utils/app_messenger.dart';
 import '../../../core/navigation/main_navigation.dart';
-import '../../gifting/screens/gift_details_loader.dart';
-import '../../donations/screens/campaign_details_loader.dart';
-import '../../trade/screens/trade_details_loader.dart';
 import '../../chat/screens/chat_screen.dart';
 import '../../chat/models/chat_conversation.dart';
 import '../../chat/providers/chat_provider.dart';
@@ -15,6 +12,7 @@ import '../../../core/models/app_models.dart';
 import '../../../screens/coming_soon_screen.dart';
 import '../../donations/screens/donations_screen.dart';
 import '../../../core/constants/app_constants.dart' hide NotificationType;
+import 'package:bybata/core/navigation/app_routes.dart';
 import 'package:bybata/core/navigation/guarded_navigator.dart';
 import 'package:bybata/core/widgets/debounced_tap.dart';
 
@@ -303,13 +301,7 @@ class NotificationNavigation {
           ? actionUrl.replaceFirst('/trades/', '').split('/').first
           : id;
       if (tradeId.isNotEmpty) {
-        GuardedNavigator.push(
-          navigator.context,
-          MaterialPageRoute(
-            builder: (_) => TradeDetailsLoader(tradeId: tradeId),
-          ),
-          force: true,
-        );
+        AppRoutes.navigateToTradeDetailsById(navigator.context, tradeId);
       } else {
         abort();
       }
@@ -326,13 +318,7 @@ class NotificationNavigation {
           ? actionUrl.replaceFirst('/gifts/', '').split('/').first
           : (data['giftId']?.toString() ?? id);
       if (giftId.isNotEmpty) {
-        GuardedNavigator.push(
-          navigator.context,
-          MaterialPageRoute(
-            builder: (_) => GiftDetailsLoader(giftId: giftId),
-          ),
-          force: true,
-        );
+        AppRoutes.navigateToGiftDetailsById(navigator.context, giftId);
       } else {
         abort();
       }
@@ -349,13 +335,7 @@ class NotificationNavigation {
         actionUrl.contains('campaign')) {
       final campaignId = resolveCampaignId(data);
       if (campaignId != null && campaignId.isNotEmpty) {
-        GuardedNavigator.push(
-          navigator.context,
-          MaterialPageRoute(
-            builder: (_) => CampaignDetailsLoader(campaignId: campaignId),
-          ),
-          force: true,
-        );
+        AppRoutes.navigateToCampaignDetailsById(navigator.context, campaignId);
         return;
       }
       if (_isDonationPayload(data)) {
@@ -369,13 +349,7 @@ class NotificationNavigation {
         return;
       }
       if (sourceType == 'campaign' && id.isNotEmpty) {
-        GuardedNavigator.push(
-          navigator.context,
-          MaterialPageRoute(
-            builder: (_) => CampaignDetailsLoader(campaignId: id),
-          ),
-          force: true,
-        );
+        AppRoutes.navigateToCampaignDetailsById(navigator.context, id);
       } else {
         abort();
       }
@@ -417,13 +391,7 @@ class NotificationNavigation {
     if (actionUrl.startsWith('/trades/')) {
       final tradeId = actionUrl.replaceFirst('/trades/', '').split('/').first;
       if (tradeId.isNotEmpty) {
-        GuardedNavigator.push(
-          navigator.context,
-          MaterialPageRoute(
-            builder: (_) => TradeDetailsLoader(tradeId: tradeId),
-          ),
-          force: true,
-        );
+        AppRoutes.navigateToTradeDetailsById(navigator.context, tradeId);
       } else {
         abort();
       }
@@ -432,13 +400,7 @@ class NotificationNavigation {
     if (actionUrl.startsWith('/gifts/')) {
       final giftId = actionUrl.replaceFirst('/gifts/', '').split('/').first;
       if (giftId.isNotEmpty) {
-        GuardedNavigator.push(
-          navigator.context,
-          MaterialPageRoute(
-            builder: (_) => GiftDetailsLoader(giftId: giftId),
-          ),
-          force: true,
-        );
+        AppRoutes.navigateToGiftDetailsById(navigator.context, giftId);
       } else {
         abort();
       }
@@ -447,13 +409,7 @@ class NotificationNavigation {
     if (actionUrl.contains('campaign')) {
       final campaignId = resolveCampaignId(data);
       if (campaignId != null && campaignId.isNotEmpty) {
-        GuardedNavigator.push(
-          navigator.context,
-          MaterialPageRoute(
-            builder: (_) => CampaignDetailsLoader(campaignId: campaignId),
-          ),
-          force: true,
-        );
+        AppRoutes.navigateToCampaignDetailsById(navigator.context, campaignId);
       } else {
         abort();
       }

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
@@ -12,6 +14,7 @@ import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/app_toast.dart';
 import '../api/trade_api.dart';
 import '../models/trade_topup.dart';
+import '../services/trade_topup_events.dart';
 
 /// PayPal top-up for an uneven trade offer.
 /// Gift and donate flows do not mount this widget.
@@ -31,17 +34,76 @@ class EvenTradePanel extends StatefulWidget {
   State<EvenTradePanel> createState() => _EvenTradePanelState();
 }
 
-class _EvenTradePanelState extends State<EvenTradePanel> {
+class _EvenTradePanelState extends State<EvenTradePanel> with WidgetsBindingObserver {
   TradeApi? _api;
   TradeTopUp? _topUp;
   bool _loading = true;
   bool _busy = false;
+  bool _cancelledLocally = false;
   String? _error;
+  StreamSubscription<TradeTopUpEvent>? _events;
+
+  bool get _cancelled => widget.tradeStatus == 'CANCELLED' || _cancelledLocally;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    _events = TradeTopUpEvents.instance.stream.listen(_onEvent);
     _load();
+  }
+
+  @override
+  void didUpdateWidget(covariant EvenTradePanel oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.tradeId != widget.tradeId ||
+        oldWidget.offerId != widget.offerId ||
+        oldWidget.tradeStatus != widget.tradeStatus) {
+      _load(silent: _topUp != null);
+    }
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _events?.cancel();
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state != AppLifecycleState.resumed || _busy) return;
+    if (_topUp?.status == 'ORDER_CREATED') _load(silent: true);
+  }
+
+  void _onEvent(TradeTopUpEvent event) {
+    if (!mounted) return;
+    final current = _topUp;
+    final mine = (event.tradeId != null && event.tradeId == widget.tradeId) ||
+        (event.offerId != null && event.offerId == widget.offerId) ||
+        (event.topUpId != null && event.topUpId == current?.id);
+    if (!mine) return;
+    switch (event.kind) {
+      case TradeTopUpEventKind.paypalReturned:
+        if (current != null &&
+            current.status == 'ORDER_CREATED' &&
+            current.paypalOrderId != null &&
+            event.status != 'CAPTURED') {
+          _refreshPayment();
+        } else {
+          _load(silent: true);
+        }
+        break;
+      case TradeTopUpEventKind.paypalCancelled:
+        _load(silent: true);
+        break;
+      case TradeTopUpEventKind.tradeChanged:
+        if (event.status == 'CANCELLED') {
+          setState(() => _cancelledLocally = true);
+        }
+        _load(silent: true);
+        break;
+    }
   }
 
   Future<TradeApi> _client() async {
@@ -51,11 +113,13 @@ class _EvenTradePanelState extends State<EvenTradePanel> {
     return _api!;
   }
 
-  Future<void> _load() async {
-    setState(() {
-      _loading = true;
-      _error = null;
-    });
+  Future<void> _load({bool silent = false}) async {
+    if (!silent) {
+      setState(() {
+        _loading = true;
+        _error = null;
+      });
+    }
     try {
       final api = await _client();
       final rows = await api.listTradeTopUps(widget.tradeId);
@@ -67,6 +131,7 @@ class _EvenTradePanelState extends State<EvenTradePanel> {
       setState(() {
         _topUp = match.isEmpty ? null : match.first;
         _loading = false;
+        _error = null;
       });
     } catch (error) {
       if (!mounted) return;
@@ -117,7 +182,7 @@ class _EvenTradePanelState extends State<EvenTradePanel> {
       return next;
     });
     if (mounted) {
-      AppToast.info(context, 'Finish PayPal, then come back and refresh.');
+      AppToast.info(context, 'Finish in PayPal. This updates when you come back.');
     }
   }
 
@@ -202,7 +267,7 @@ class _EvenTradePanelState extends State<EvenTradePanel> {
   Widget build(BuildContext context) {
     final userId = context.watch<AuthProvider>().currentUser?.id;
     final topUp = _topUp;
-    final cancelled = widget.tradeStatus == 'CANCELLED';
+    final cancelled = _cancelled;
     if (_loading) {
       return const Padding(
         padding: EdgeInsets.symmetric(vertical: 8),
@@ -213,51 +278,101 @@ class _EvenTradePanelState extends State<EvenTradePanel> {
       return const SizedBox.shrink();
     }
 
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
       width: double.infinity,
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(14),
+      margin: const EdgeInsets.only(bottom: 4),
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 14),
       decoration: BoxDecoration(
-        color: AppTheme.tradeColor.withValues(alpha: 0.08),
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(22),
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            AppTheme.tradeColor.withValues(alpha: isDark ? 0.22 : 0.12),
+            AppTheme.tradeColor.withValues(alpha: isDark ? 0.08 : 0.04),
+          ],
+        ),
+        border: Border.all(
+          color: AppTheme.tradeColor.withValues(alpha: 0.18),
+        ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              const Icon(Icons.balance_rounded, color: AppTheme.tradeColor, size: 18),
-              const SizedBox(width: 8),
+              Container(
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(
+                  color: AppTheme.tradeColor.withValues(alpha: 0.16),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Icon(Icons.balance_rounded,
+                    color: AppTheme.tradeColor, size: 20),
+              ),
+              const SizedBox(width: 10),
               const Expanded(
                 child: Text(
-                  'Even this trade',
-                  style: TextStyle(fontWeight: FontWeight.w800),
+                  'Even with PayPal',
+                  style: TextStyle(
+                    fontWeight: FontWeight.w900,
+                    fontSize: 16,
+                    letterSpacing: -0.2,
+                  ),
                 ),
               ),
               if (topUp != null)
-                Text(
-                  tradeTopUpStatusLabel(topUp),
-                  style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: AppTheme.tradeColor.withValues(alpha: 0.14),
+                    borderRadius: BorderRadius.circular(999),
+                  ),
+                  child: Text(
+                    tradeTopUpStatusLabel(topUp),
+                    style: const TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w800,
+                      color: AppTheme.tradeColor,
+                    ),
+                  ),
                 ),
             ],
           ),
           if (topUp == null && widget.offerId != null && !cancelled) ...[
-            const SizedBox(height: 8),
-            const Text('If the two items are not worth the same, suggest a PayPal top-up.'),
             const SizedBox(height: 10),
+            Text(
+              'Items not worth the same? Get a fair USD top-up, both accept it, then pay in PayPal.',
+              style: TextStyle(
+                fontSize: 13,
+                height: 1.35,
+                color: Theme.of(context).hintColor,
+              ),
+            ),
+            const SizedBox(height: 12),
             _button('Even this trade', _busy ? null : _even),
           ],
           if (topUp != null) ...[
-            const SizedBox(height: 8),
+            const SizedBox(height: 12),
             Text(
               topUp.amount <= 0
-                  ? 'No cash is needed.'
+                  ? 'Already even'
                   : '${topUp.currency} ${topUp.amount.toStringAsFixed(2)}',
-              style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w800),
+              style: const TextStyle(
+                fontSize: 28,
+                fontWeight: FontWeight.w900,
+                letterSpacing: -0.6,
+              ),
             ),
             if (topUp.aiReason != null) ...[
-              const SizedBox(height: 6),
-              Text(topUp.aiReason!),
+              const SizedBox(height: 8),
+              Text(
+                topUp.aiReason!,
+                style: const TextStyle(fontSize: 13, height: 1.35),
+              ),
             ],
             const SizedBox(height: 6),
             Text(

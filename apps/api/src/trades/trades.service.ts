@@ -814,6 +814,80 @@ export class TradesService {
     return { success: true, id };
   }
 
+  /**
+   * Offers the user sent (as bidder) or received (as trade owner).
+   * Does not depend on the public OPEN feed, so IN_OFFER trades still appear.
+   */
+  async listMyOffers(userId: string, page = 1, size = 50) {
+    const normalizedPage = Math.max(page ?? 1, 1);
+    const normalizedSize = Math.min(Math.max(size ?? 50, 1), 100);
+    const where: Prisma.TradeOfferWhereInput = {
+      parentOfferId: null,
+      OR: [{ bidderId: userId }, { trade: { ownerId: userId } }],
+    };
+    const [total, rows] = await this.prisma.$transaction([
+      this.prisma.tradeOffer.count({ where }),
+      this.prisma.tradeOffer.findMany({
+        where,
+        orderBy: { createdAt: 'desc' },
+        skip: (normalizedPage - 1) * normalizedSize,
+        take: normalizedSize,
+        include: {
+          trade: {
+            include: {
+              owner: {
+                select: {
+                  id: true,
+                  profile: { select: { displayName: true, avatarKey: true } },
+                },
+              },
+            },
+          },
+          offeredTrade: {
+            include: {
+              owner: {
+                select: {
+                  id: true,
+                  profile: { select: { displayName: true, avatarKey: true } },
+                },
+              },
+            },
+          },
+          bidder: {
+            select: {
+              id: true,
+              profile: { select: { displayName: true, avatarKey: true } },
+            },
+          },
+        },
+      }),
+    ]);
+
+    const items = rows.map((row) => {
+      const direction = row.bidderId === userId ? 'sent' : 'received';
+      return {
+        ...row,
+        direction,
+        tradeId: row.tradeId,
+        tradeTitle: row.trade?.title ?? 'Trade',
+        ownerId: row.trade?.ownerId,
+        ownerName:
+          row.trade?.owner?.profile?.displayName ??
+          row.trade?.owner?.id ??
+          'Owner',
+        bidderName:
+          row.bidder?.profile?.displayName ?? row.bidder?.id ?? 'User',
+      };
+    });
+
+    return {
+      items,
+      page: normalizedPage,
+      size: normalizedSize,
+      total,
+    };
+  }
+
   async listOffers(tradeId: string) {
     await this.ensureTrade(tradeId);
     return this.prisma.tradeOffer.findMany({

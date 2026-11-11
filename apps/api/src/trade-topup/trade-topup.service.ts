@@ -437,6 +437,8 @@ function readCondition(metadata: Prisma.JsonValue | null | undefined): string | 
 export function apiBaseUrl(): string {
   const explicit = (process.env.API_PUBLIC_URL || process.env.API_PUBLIC_BASE_URL || '').trim();
   if (explicit) return explicit.replace(/\/+$/, '');
+  const railway = (process.env.RAILWAY_PUBLIC_DOMAIN || '').trim();
+  if (railway) return `https://${railway.replace(/^https?:\/\//, '').replace(/\/+$/, '')}`;
   const port = process.env.PORT || '3000';
   return `http://localhost:${port}`;
 }

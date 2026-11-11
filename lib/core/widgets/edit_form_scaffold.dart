@@ -13,6 +13,8 @@ class EditFormScaffold extends StatelessWidget {
   final VoidCallback onSave;
   final Widget child;
   final Color? accentColor;
+  final String? swipeCommitLabel;
+  final Future<void> Function()? onSwipeCommit;
 
   /// Optional label for discard sheet copy, e.g. "gift", "trade", "donation".
   final String? discardItemLabel;
@@ -27,6 +29,8 @@ class EditFormScaffold extends StatelessWidget {
     this.subtitle,
     this.accentColor,
     this.discardItemLabel,
+    this.swipeCommitLabel,
+    this.onSwipeCommit,
   });
 
   Future<bool> _confirmDiscard(BuildContext context) async {
@@ -59,8 +63,13 @@ class EditFormScaffold extends StatelessWidget {
       child: Scaffold(
         backgroundColor: bgColor,
         body: GestureDetector(
-          behavior: HitTestBehavior.opaque,
-          onTap: () => FocusScope.of(context).unfocus(),
+          behavior: HitTestBehavior.deferToChild,
+          onTap: () {
+            final focus = FocusManager.instance.primaryFocus;
+            if (focus != null && focus.hasFocus) {
+              focus.unfocus();
+            }
+          },
           child: SafeArea(
             child: Column(
               children: [
@@ -102,6 +111,8 @@ class EditFormScaffold extends StatelessWidget {
                   onPrimary: isLoading ? null : onSave,
                   primaryLabel: 'Save changes',
                   isLoading: isLoading,
+                  swipeCommitLabel: swipeCommitLabel,
+                  onSwipeCommit: onSwipeCommit,
                 ),
               ],
             ),

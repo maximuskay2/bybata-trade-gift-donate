@@ -9,6 +9,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import '../../../core/accessibility/accessibility_utils.dart';
+import '../../../core/navigation/route_observer.dart';
 import '../../feed/models/social_listing_card_data.dart';
 import '../widgets/home_v2_tokens.dart';
 import 'ask_understanding.dart';
@@ -26,6 +27,7 @@ import 'widgets/command_input_pill.dart';
 import 'widgets/conversational_greeting.dart';
 import 'widgets/conversational_item_suggestion_list.dart';
 import 'widgets/intent_summary_chip.dart';
+import 'widgets/soft_reveal.dart';
 
 /// Gemini-style intent surface — greeting + typeahead suggestions, no inline feed.
 class ConversationalHomeBody extends StatefulWidget {
@@ -44,7 +46,8 @@ class ConversationalHomeBody extends StatefulWidget {
   State<ConversationalHomeBody> createState() => _ConversationalHomeBodyState();
 }
 
-class _ConversationalHomeBodyState extends State<ConversationalHomeBody> {
+class _ConversationalHomeBodyState extends State<ConversationalHomeBody>
+    with RouteAware {
   final TextEditingController _controller = TextEditingController();
   final FocusNode _focusNode = FocusNode();
   final ScrollController _threadScroll = ScrollController();
@@ -57,6 +60,11 @@ class _ConversationalHomeBodyState extends State<ConversationalHomeBody> {
 
   /// Hides the typeahead once its query has been turned into results.
   String? _submittedQuery;
+
+  /// Covers the moment between send and the feed taking the query,
+  /// so the greeting does not flash back.
+  bool _openingThread = false;
+  String? _pendingAsk;
   Timer? _typeaheadDebounce;
   late final ConversationalFeedProvider _feed;
   String? _announcedIntent;
@@ -72,9 +80,28 @@ class _ConversationalHomeBodyState extends State<ConversationalHomeBody> {
   void initState() {
     super.initState();
     _feed = ConversationalFeedProvider(isAuthed: widget.isAuthed);
-    _feed.addListener(_announceIntent);
+    _feed.addListener(_onFeed);
     _controller.addListener(_onTextChanged);
     _focusNode.addListener(() => setState(() {}));
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final route = ModalRoute.of(context);
+    if (route is PageRoute) {
+      appRouteObserver.unsubscribe(this);
+      appRouteObserver.subscribe(this, route);
+    }
+  }
+
+  @override
+  void didPushNext() => _resetInputOnLeave();
+
+  void _onFeed() {
+    final live = _feed.activeQuery?.trim() ?? '';
+    if (live.isNotEmpty) _pendingAsk = null;
+    _announceIntent();
   }
 
   void _announceIntent() {
@@ -91,15 +118,36 @@ class _ConversationalHomeBodyState extends State<ConversationalHomeBody> {
 
   @override
   void dispose() {
+    appRouteObserver.unsubscribe(this);
     _typeaheadDebounce?.cancel();
     _typeahead.cancel();
     _threadScroll.dispose();
-    _feed.removeListener(_announceIntent);
+    _feed.removeListener(_onFeed);
     _feed.dispose();
     _controller.removeListener(_onTextChanged);
     _controller.dispose();
     _focusNode.dispose();
     super.dispose();
+  }
+
+  /// Clears the Gemini pill when the user leaves home so the next visit starts blank.
+  void _resetInputOnLeave() {
+    if (!mounted) return;
+    _typeaheadDebounce?.cancel();
+    _typeahead.cancel();
+    _focusNode.unfocus();
+    if (_controller.text.isEmpty &&
+        _itemSuggestions.isEmpty &&
+        !_itemSuggestionsLoading) {
+      return;
+    }
+    setState(() {
+      _controller.clear();
+      _itemSuggestions = const [];
+      _itemSuggestionsLoading = false;
+      _typingGuidance = null;
+      _submittedQuery = null;
+    });
   }
 
   void _onTextChanged() {
@@ -148,7 +196,7 @@ class _ConversationalHomeBodyState extends State<ConversationalHomeBody> {
   void _openSearchForQuery(String query, {IntentModule? module}) {
     final trimmed = query.trim();
     if (trimmed.isEmpty) return;
-    _focusNode.unfocus();
+    _resetInputOnLeave();
     ConversationalAnalytics.searchSubmitted(trimmed);
     IntentNavigation.openSearchWithQuery(
       context,
@@ -165,9 +213,21 @@ class _ConversationalHomeBodyState extends State<ConversationalHomeBody> {
     }
     _focusNode.unfocus();
     ConversationalAnalytics.searchSubmitted(query);
+    setState(() {
+      _submittedQuery = null;
+      _openingThread = true;
+      _pendingAsk = query;
+    });
     _controller.clear();
-    setState(() => _submittedQuery = null);
-    _feed.ask(query);
+    unawaited(
+      _feed.ask(query).then((_) {}, onError: (Object _) {
+        if (!mounted) return;
+        setState(() {
+          _openingThread = false;
+          _pendingAsk = null;
+        });
+      }),
+    );
     _scrollThreadToEnd();
   }
 
@@ -191,24 +251,34 @@ class _ConversationalHomeBodyState extends State<ConversationalHomeBody> {
   }
 
   void _onItemSuggestionTap(SocialListingCardData item) {
-    _focusNode.unfocus();
     ConversationalAnalytics.resultTap(
       module: item.module.name,
       listingId: item.id,
     );
+    _resetInputOnLeave();
     ConversationalCardActions.openDetail(context, item);
   }
 
   void _onAssistantAction(AssistantTarget target) {
-    _focusNode.unfocus();
+    _resetInputOnLeave();
     IntentNavigation.go(context, target.suggestion);
   }
 
   void _clearSearch() {
     _announcedIntent = null;
     _announcedReply = null;
+    setState(() {
+      _openingThread = false;
+      _pendingAsk = null;
+    });
     _controller.clear();
     _feed.clearIntent();
+  }
+
+  String _visibleQuery() {
+    final live = _feed.activeQuery?.trim() ?? '';
+    if (live.isNotEmpty) return live;
+    return _pendingAsk ?? '';
   }
 
   @override
@@ -241,45 +311,55 @@ class _ConversationalHomeBodyState extends State<ConversationalHomeBody> {
           Column(
             children: [
               Expanded(child: _buildWelcome(context)),
-              if (showSuggestionsPanel)
-                Padding(
-                  padding: const EdgeInsets.only(
-                    left: HomeV2Tokens.kHorizontalPad,
-                    right: HomeV2Tokens.kHorizontalPad,
-                    bottom: 8,
-                  ),
-                  child: ConstrainedBox(
-                    constraints: const BoxConstraints(maxHeight: 360),
-                    child: SingleChildScrollView(
-                      physics: const BouncingScrollPhysics(),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          if (guidance != null) ...[
-                            AssistantGuidanceCard(
-                              guidance: guidance,
-                              onAction: _onAssistantAction,
-                              compact: true,
-                            ),
-                            const SizedBox(height: 8),
-                          ],
-                          if (showItemSection) ...[
-                            ConversationalItemSuggestionList(
-                              items: _itemSuggestions,
-                              isLoading: _itemSuggestionsLoading,
-                              query: query,
-                              onItemTap: _onItemSuggestionTap,
-                              onSeeAllTap: _itemSuggestions.length >= 3
-                                  ? () => _openSearchForQuery(query)
-                                  : null,
-                            ),
-                            const SizedBox(height: 8),
-                          ],
-                        ],
-                      ),
-                    ),
-                  ),
+              AnimatedSize(
+                duration: Duration(
+                  milliseconds: MediaQuery.disableAnimationsOf(context)
+                      ? 120
+                      : 320,
                 ),
+                curve: Curves.easeOutCubic,
+                alignment: Alignment.bottomCenter,
+                child: showSuggestionsPanel
+                    ? Padding(
+                        padding: const EdgeInsets.only(
+                          left: HomeV2Tokens.kHorizontalPad,
+                          right: HomeV2Tokens.kHorizontalPad,
+                          bottom: 8,
+                        ),
+                        child: ConstrainedBox(
+                          constraints: const BoxConstraints(maxHeight: 360),
+                          child: SingleChildScrollView(
+                            physics: const BouncingScrollPhysics(),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: [
+                                if (guidance != null) ...[
+                                  AssistantGuidanceCard(
+                                    guidance: guidance,
+                                    onAction: _onAssistantAction,
+                                    compact: true,
+                                  ),
+                                  const SizedBox(height: 8),
+                                ],
+                                if (showItemSection) ...[
+                                  ConversationalItemSuggestionList(
+                                    items: _itemSuggestions,
+                                    isLoading: _itemSuggestionsLoading,
+                                    query: query,
+                                    onItemTap: _onItemSuggestionTap,
+                                    onSeeAllTap: _itemSuggestions.length >= 3
+                                        ? () => _openSearchForQuery(query)
+                                        : null,
+                                  ),
+                                  const SizedBox(height: 8),
+                                ],
+                              ],
+                            ),
+                          ),
+                        ),
+                      )
+                    : const SizedBox(width: double.infinity),
+              ),
               AnimatedPadding(
                 duration: const Duration(milliseconds: 200),
                 curve: Curves.easeOutCubic,
@@ -304,24 +384,61 @@ class _ConversationalHomeBodyState extends State<ConversationalHomeBody> {
       builder: (context, _) {
         final query = _feed.activeQuery;
         final inThread =
-            _feed.history.isNotEmpty || (query != null && query.isNotEmpty);
-        if (inThread) return _buildResults(context);
-        return _buildGreeting(context);
+            _openingThread ||
+            _feed.history.isNotEmpty ||
+            (query != null && query.isNotEmpty);
+        final reduce = MediaQuery.disableAnimationsOf(context);
+        return AnimatedSwitcher(
+          duration: Duration(milliseconds: reduce ? 150 : 520),
+          switchInCurve: Curves.easeOutCubic,
+          switchOutCurve: Curves.easeInCubic,
+          layoutBuilder: (current, previous) => Stack(
+            fit: StackFit.expand,
+            alignment: Alignment.topCenter,
+            children: [...previous, if (current != null) current],
+          ),
+          transitionBuilder: (child, animation) {
+            final fade = FadeTransition(opacity: animation, child: child);
+            if (reduce) return fade;
+            return SlideTransition(
+              position: Tween<Offset>(
+                begin: const Offset(0, 0.04),
+                end: Offset.zero,
+              ).animate(animation),
+              child: fade,
+            );
+          },
+          child: inThread
+              ? KeyedSubtree(
+                  key: const ValueKey('thread'),
+                  child: _buildResults(context),
+                )
+              : KeyedSubtree(
+                  key: const ValueKey('greeting'),
+                  child: _buildGreeting(context),
+                ),
+        );
       },
     );
   }
 
   Widget _buildResults(BuildContext context) {
-    final query = _feed.activeQuery ?? '';
+    final query = _visibleQuery();
     final thinking =
         query.isNotEmpty &&
-        ((_feed.items.isEmpty && _feed.isLoading) ||
+        (_pendingAsk != null ||
+            (_feed.items.isEmpty && _feed.isLoading) ||
             _feed.intentPending ||
             _feed.loadingPicks);
     final guidance = _feed.assistant;
     final showListings = _feed.showListings;
     final showSummaryChip = showListings && _feed.aiSummaryLine != null;
-    return ListView(
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        Positioned.fill(child: _AnswerWash(active: thinking)),
+        Positioned.fill(
+          child: ListView(
       controller: _threadScroll,
       physics: const BouncingScrollPhysics(),
       padding: const EdgeInsets.fromLTRB(
@@ -331,27 +448,36 @@ class _ConversationalHomeBodyState extends State<ConversationalHomeBody> {
         24,
       ),
       children: [
-        for (final turn in _feed.history) ...[
-          _UserBubble(text: turn.query),
+        for (var i = 0; i < _feed.history.length; i++) ...[
+          SoftReveal(
+            key: ValueKey('bubble-$i-${_feed.history[i].query}'),
+            travel: 20,
+            child: _UserBubble(text: _feed.history[i].query),
+          ),
           const SizedBox(height: 12),
-          if (turn.assistant != null) ...[
+          if (_feed.history[i].assistant != null) ...[
             AssistantGuidanceCard(
-              guidance: turn.assistant!,
+              guidance: _feed.history[i].assistant!,
               onAction: _onAssistantAction,
               onOpenListing: _onItemSuggestionTap,
             ),
             const SizedBox(height: 8),
           ],
-          if (turn.showListings && turn.listings.isNotEmpty)
+          if (_feed.history[i].showListings &&
+              _feed.history[i].listings.isNotEmpty)
             _PastListings(
-              items: turn.listings,
+              items: _feed.history[i].listings,
               onOpen: (item) =>
                   ConversationalCardActions.openDetail(context, item),
             ),
           const SizedBox(height: 28),
         ],
         if (query.isNotEmpty) ...[
-          _UserBubble(text: query, onClear: _clearSearch),
+          SoftReveal(
+            key: ValueKey('bubble-${_feed.history.length}-$query'),
+            travel: 28,
+            child: _UserBubble(text: query, onClear: _clearSearch),
+          ),
           const SizedBox(height: 12),
         ],
         AnimatedSwitcher(
@@ -403,6 +529,9 @@ class _ConversationalHomeBodyState extends State<ConversationalHomeBody> {
                       ..._buildListings(query, showSummaryChip),
                   ],
                 ),
+        ),
+      ],
+          ),
         ),
       ],
     );
@@ -477,6 +606,36 @@ class _ConversationalHomeBodyState extends State<ConversationalHomeBody> {
           ),
         );
       },
+    );
+  }
+}
+
+class _AnswerWash extends StatelessWidget {
+  final bool active;
+
+  const _AnswerWash({required this.active});
+
+  @override
+  Widget build(BuildContext context) {
+    final reduce = MediaQuery.disableAnimationsOf(context);
+    return IgnorePointer(
+      child: AnimatedOpacity(
+        opacity: active ? 1 : 0,
+        duration: Duration(milliseconds: reduce ? 120 : 700),
+        curve: Curves.easeOutCubic,
+        child: const DecoratedBox(
+          decoration: BoxDecoration(
+            gradient: RadialGradient(
+              center: Alignment(0, -0.35),
+              radius: 1.05,
+              colors: [
+                Color(0x178E6CF6),
+                Color(0x00000000),
+              ],
+            ),
+          ),
+        ),
+      ),
     );
   }
 }

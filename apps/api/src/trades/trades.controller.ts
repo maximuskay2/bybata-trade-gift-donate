@@ -93,6 +93,18 @@ export class TradesController {
     return this.trades.getUserTradeHistory(user.sub, page, size);
   }
 
+  /** Offers the user sent or received, including trades locked as IN_OFFER. */
+  @Get('offers/mine')
+  async myOffers(
+    @CurrentUser() user: any,
+    @Query('page') pageStr?: string,
+    @Query('size') sizeStr?: string,
+  ) {
+    const page = Math.max(parseInt(pageStr ?? '1', 10) || 1, 1);
+    const size = Math.min(Math.max(parseInt(sizeStr ?? '50', 10) || 50, 1), 100);
+    return this.trades.listMyOffers(user.sub, page, size);
+  }
+
   @Get(':id')
   async detail(@Param('id') id: string) {
     return this.trades.getTrade(id);

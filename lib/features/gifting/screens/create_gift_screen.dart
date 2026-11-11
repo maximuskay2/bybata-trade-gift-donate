@@ -25,6 +25,7 @@ import '../../../core/services/listing_media_upload_service.dart';
 import '../../../core/widgets/listing_creation_progress.dart';
 import '../../../core/navigation/app_routes.dart';
 import '../../../core/services/listing_seeding_context.dart';
+import '../../../core/motion/publish_finale.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/image_resize_utils.dart';
 import '../../../core/providers/auth_provider.dart';
@@ -341,6 +342,17 @@ class _CreateGiftScreenState extends State<CreateGiftScreen> with TickerProvider
 
   bool _validateEdit() => _isEditFormValid();
 
+  Future<void> _openReview() async {
+    for (var step = 0; step < 2; step++) {
+      if (!_isStepValid(step)) {
+        await _goToStep(step);
+        _failValidation();
+        return;
+      }
+    }
+    await _goToStep(2);
+  }
+
   void _nextStep() {
     if (_validateCurrentStep() && _currentStep < 2) {
       _pageController.nextPage(
@@ -531,7 +543,15 @@ class _CreateGiftScreenState extends State<CreateGiftScreen> with TickerProvider
       );
 
       if (gift != null && mounted) {
-        AppToast.success(context, 'Gift created successfully!');
+        if (!_isEdit) {
+          await showPublishFinale(
+            context,
+            line: 'Listed',
+            color: AppTheme.giftColor,
+            imagePath: _mediaDraft.heroPath,
+          );
+        }
+        if (!mounted) return;
         AppRoutes.replaceWithGiftHub(context, createdGiftId: gift.id);
       } else if (mounted) {
         AppToast.error(context, provider.error ?? 'Failed to create gift');
@@ -640,7 +660,9 @@ class _CreateGiftScreenState extends State<CreateGiftScreen> with TickerProvider
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final isDark = _isEdit
+        ? Theme.of(context).brightness == Brightness.dark
+        : false;
     final accent = AppTheme.giftColor;
 
     if (_isEdit) {
@@ -652,6 +674,8 @@ class _CreateGiftScreenState extends State<CreateGiftScreen> with TickerProvider
         isLoading: _isLoading,
         isDirty: _isDirty,
         onSave: _submitGift,
+        swipeCommitLabel: 'Save Gift',
+        onSwipeCommit: _submitGift,
         child: _buildEditForm(isDark, accent),
       );
     }
@@ -691,10 +715,35 @@ class _CreateGiftScreenState extends State<CreateGiftScreen> with TickerProvider
         ),
       ),
       onBack: _previousStep,
-      onPrimary: _currentStep < 2 ? _nextStep : _submitGift,
-      primaryLabel: _currentStep < 2 ? 'Continue' : 'Post Gift',
+      onPrimary: _currentStep < 2 ? _openReview : _submitGift,
+      primaryLabel: _currentStep < 2 ? 'Review' : 'Post Gift',
+      chapterCaption: '${_currentStep + 1} of 3 · ${[
+        'Gift basics',
+        'Details',
+        'Review',
+      ][_currentStep]}',
+      swipeCommitLabel: _currentStep < 2 ? null : 'Post Gift',
+      onSwipeCommit: _currentStep < 2 ? null : _submitGift,
+      onStage: true,
+      heroPath: _mediaDraft.heroPath,
+      onHeroTap: _captureFromHero,
+      reviewLabel: _currentStep < 2 ? 'Continue' : null,
       isLoading: _isLoading,
     );
+  }
+
+  Future<void> _captureFromHero() async {
+    final next = await ListingMediaPicker.captureInto(
+      context,
+      draft: _mediaDraft,
+      accentColor: AppTheme.giftColor,
+      title: 'Add photos to your gift',
+    );
+    if (!mounted || next == null) return;
+    setState(() {
+      _mediaDraft = next;
+      _clearValidationHighlight();
+    });
   }
 
   Widget _buildInfoStep(bool isDark, Color accent) {
@@ -758,6 +807,7 @@ class _CreateGiftScreenState extends State<CreateGiftScreen> with TickerProvider
               accentColor: accent,
               title: 'Add photos to your gift',
               moduleLabel: 'gift',
+              hidePrimaryCapture: true,
               onChanged: (draft) => setState(() {
                 _mediaDraft = draft;
                 _clearValidationHighlight();

@@ -16,6 +16,7 @@ import '../../../core/widgets/preference_radio_group.dart';
 import '../../../core/widgets/fiat_byc_value_field.dart';
 import '../../../core/utils/permissions_helper.dart';
 import '../../../core/services/location_service.dart';
+import '../../../core/motion/publish_finale.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/providers/auth_provider.dart';
 import '../../../core/navigation/main_navigation.dart';
@@ -189,6 +190,27 @@ class _CreateTradeScreenState extends State<CreateTradeScreen> with TickerProvid
     }
   }
 
+  Future<void> _openReview() async {
+    for (var step = 0; step < 2; step++) {
+      if (!_isStepValid(step)) {
+        await _goToStep(step);
+        _failValidation();
+        return;
+      }
+    }
+    await _goToStep(2);
+  }
+
+  Future<void> _leaveListed() async {
+    await showPublishFinale(
+      context,
+      line: 'Listed',
+      color: AppTheme.tradeColor,
+      imagePath: _mediaDraft.heroPath,
+    );
+    if (mounted) AppRoutes.replaceWithTradeHub(context);
+  }
+
   void _previousStep() {
     if (_currentStep > 0) {
       _pageController.previousPage(duration: _stepTransition, curve: Curves.easeInOut);
@@ -258,19 +280,16 @@ class _CreateTradeScreenState extends State<CreateTradeScreen> with TickerProvid
         if (boostOk && mounted) {
           final publishOk = await provider.publishDraft(tradeId);
           if (publishOk && mounted) {
-            AppToast.success(context, 'Trade created and promoted!');
-            AppRoutes.replaceWithTradeHub(context);
+            await _leaveListed();
           } else if (mounted) {
-            AppToast.success(context, 'Trade created.');
-            AppRoutes.replaceWithTradeHub(context);
+            await _leaveListed();
           }
         } else if (mounted) {
           AppToast.success(context, 'Trade saved as draft.');
           AppRoutes.replaceWithTradeHub(context);
         }
       } else {
-        AppToast.success(context, 'Trade created successfully!');
-        if (mounted) AppRoutes.replaceWithTradeHub(context);
+        if (mounted) await _leaveListed();
       }
     } catch (e) {
       if (mounted) AppToast.error(context, 'An error occurred: $e');
@@ -281,7 +300,8 @@ class _CreateTradeScreenState extends State<CreateTradeScreen> with TickerProvid
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
+    // Stage create sits on a light glass sheet — keep form chrome light.
+    const isDark = false;
     final accent = AppTheme.tradeColor;
 
     return ListingCreateShell(
@@ -320,10 +340,35 @@ class _CreateTradeScreenState extends State<CreateTradeScreen> with TickerProvid
       ),
       showBackButton: true,
       onBack: _previousStep,
-      onPrimary: _currentStep < 2 ? _nextStep : _submitTrade,
-      primaryLabel: _currentStep < 2 ? 'Continue' : 'Publish Trade',
+      onPrimary: _currentStep < 2 ? _openReview : _submitTrade,
+      primaryLabel: _currentStep < 2 ? 'Review' : 'Publish Trade',
+      chapterCaption: '${_currentStep + 1} of 3 · ${[
+        'What & photos',
+        'Story & place',
+        'Preferences',
+      ][_currentStep]}',
+      swipeCommitLabel: _currentStep < 2 ? null : 'Publish Trade',
+      onSwipeCommit: _currentStep < 2 ? null : _submitTrade,
+      onStage: true,
+      heroPath: _mediaDraft.heroPath,
+      onHeroTap: _captureFromHero,
+      reviewLabel: _currentStep < 2 ? 'Continue' : null,
       isLoading: _isLoading,
     );
+  }
+
+  Future<void> _captureFromHero() async {
+    final next = await ListingMediaPicker.captureInto(
+      context,
+      draft: _mediaDraft,
+      accentColor: AppTheme.tradeColor,
+      title: 'Add photos or a short video',
+    );
+    if (!mounted || next == null) return;
+    setState(() {
+      _mediaDraft = next;
+      _clearValidationHighlight();
+    });
   }
 
   Widget _buildCoreInfoStep(bool isDark, Color accent) {
@@ -376,6 +421,7 @@ class _CreateTradeScreenState extends State<CreateTradeScreen> with TickerProvid
               accentColor: accent,
               title: 'Add photos or a short video',
               moduleLabel: 'trade',
+              hidePrimaryCapture: true,
               onChanged: (draft) => setState(() {
                 _mediaDraft = draft;
                 _clearValidationHighlight();

@@ -17,6 +17,9 @@ class ListingMediaConstants {
   /// Default photo count cap in create / edit flows.
   static const int maxPhotosPerListing = 5;
 
+  /// New listing clips. Older uploads are still allowed up to one minute.
+  static const Duration heroClipMax = Duration(seconds: 8);
+
   /// Target JPEG size after compression (see [ImageResizeUtils]).
   static const int targetImageMaxBytes = 100 * 1024;
 
@@ -39,9 +42,9 @@ class ListingMediaConstants {
 
   /// Short lines shown under the media picker for all listing types.
   static List<String> uploadGuidance({int maxPhotos = maxPhotosPerListing}) => [
-        'Photos are cropped to $aspectRatioLabel for the feed — ideal $recommendedDimensionsLabel.',
-        'Photos: up to $maxPhotos JPG/PNG images. $targetImageSizeLabel',
-        'Video: one clip, $maxVideoDurationLabel. Shown as $aspectRatioLabel in the feed.',
+        'Tap the preview to focus, then shoot. Move closer if the item looks tiny.',
+        'Photos: up to $maxPhotos. Dark or very blurry shots are refused.',
+        'Video: one ${heroClipMax.inSeconds} second clip. Keep the item in frame and turn it slowly.',
         'Choose either photos or video — not both on the same listing.',
       ];
 }

@@ -206,6 +206,30 @@ class AppSideDrawer extends StatelessWidget {
                       }),
                     ),
                     _DrawerMenuItem(
+                      icon: Icons.swap_horiz_rounded,
+                      label: 'Trade',
+                      color: AppTheme.tradeColor,
+                      onTap: () => _navigateAndClose(context, () {
+                        AppRoutes.navigateToTradeHub(context);
+                      }),
+                    ),
+                    _DrawerMenuItem(
+                      icon: Icons.card_giftcard_rounded,
+                      label: 'Gift',
+                      color: AppTheme.giftColor,
+                      onTap: () => _navigateAndClose(context, () {
+                        AppRoutes.navigateToGiftHub(context);
+                      }),
+                    ),
+                    _DrawerMenuItem(
+                      icon: Icons.volunteer_activism_rounded,
+                      label: 'Donate',
+                      color: AppTheme.donationColor,
+                      onTap: () => _navigateAndClose(context, () {
+                        AppRoutes.navigateToDonationsHub(context);
+                      }),
+                    ),
+                    _DrawerMenuItem(
                       icon: Icons.person_outline_rounded,
                       label: 'Profile',
                       color: AppTheme.primaryColor,

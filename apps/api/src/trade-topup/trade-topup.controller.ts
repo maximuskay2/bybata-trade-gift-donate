@@ -79,6 +79,7 @@ export class TradeTopUpController {
     res.status(200).type('html').send(renderResult(
       { id: topUpId, status: 'ORDER_CREATED', amount: null, currency: 'USD' },
       'PayPal checkout was cancelled. You can try again in the app.',
+      'cancelled',
     ));
   }
 
@@ -125,22 +126,38 @@ function parseWebhookBody(req: Request, body: any) {
   return body ?? {};
 }
 
+export function tradeTopUpDeepLink(
+  topUp: { id?: string; tradeId?: string; status?: string } | null,
+  result?: 'cancelled' | 'failed',
+) {
+  const params = new URLSearchParams();
+  if (topUp?.id) params.set('topUpId', topUp.id);
+  if (topUp?.tradeId) params.set('tradeId', topUp.tradeId);
+  params.set('status', topUp?.status || 'UNKNOWN');
+  if (result) params.set('result', result);
+  return `bybata://trade-topup/done?${params.toString()}`;
+}
+
 function renderResult(
-  topUp: { id?: string; status?: string; amount?: number | null; currency?: string } | null,
+  topUp: { id?: string; tradeId?: string; status?: string; amount?: number | null; currency?: string } | null,
   title: string,
+  result?: 'cancelled' | 'failed',
 ) {
   const status = topUp?.status || 'UNKNOWN';
   const amount = topUp?.amount != null ? `${topUp.currency || 'USD'} ${Number(topUp.amount).toFixed(2)}` : '';
-  const deepLink = topUp?.id
-    ? `bybata://trade-topup/done?topUpId=${encodeURIComponent(topUp.id)}&status=${encodeURIComponent(status)}`
-    : 'bybata://trade-topup/done';
+  const deepLink = escapeHtml(tradeTopUpDeepLink(topUp, result ?? (topUp ? undefined : 'failed')));
   return `<!doctype html>
 <html>
-<head><meta charset="utf-8"><title>${escapeHtml(title)}</title></head>
-<body style="font-family: sans-serif; padding: 32px;">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>${escapeHtml(title)}</title>
+</head>
+<body style="font-family: sans-serif; padding: 32px; text-align: center;">
   <h1>${escapeHtml(title)}</h1>
   <p>${escapeHtml(amount)} ${escapeHtml(status)}</p>
-  <p><a href="${deepLink}">Return to Bybata</a></p>
+  <p><a id="back" href="${deepLink}" style="display:inline-block;padding:14px 22px;border-radius:12px;background:#0070ba;color:#fff;text-decoration:none;font-weight:700;">Return to Bybata</a></p>
+  <script>setTimeout(function () { window.location.href = document.getElementById('back').href; }, 600);</script>
 </body>
 </html>`;
 }

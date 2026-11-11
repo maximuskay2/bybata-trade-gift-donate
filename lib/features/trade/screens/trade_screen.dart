@@ -36,7 +36,6 @@ import '../../wallet/services/wallet_service.dart';
 import '../../wallet/screens/promotion_center_screen.dart';
 import 'negotiation_screen.dart';
 import 'existing_offer_negotiation_screen.dart';
-import 'my_trades_screen.dart';
 import 'package:bybata/core/widgets/bybata_loading_indicator.dart';
 
 // Chat Feature Imports
@@ -45,24 +44,42 @@ import '../../feed/models/social_listing_card_data.dart';
 import '../../feed/widgets/social_feed_list.dart';
 import 'package:bybata/core/widgets/app_toast.dart';
 import 'package:bybata/core/navigation/guarded_navigator.dart';
+import '../../../core/motion/create_stage_route.dart';
+import '../../../core/motion/hero_stage.dart';
+import '../../../core/motion/hub_atmosphere.dart';
+import '../../../core/motion/hub_create_rail.dart';
+import '../../../core/motion/hub_deck_bar.dart';
+import '../../../core/motion/hub_stage_bus.dart';
+import '../../../core/motion/soft_reveal.dart';
+import '../../../core/motion/living_slide.dart';
+import '../../../core/motion/stage_controller.dart';
+import '../../../core/navigation/route_observer.dart';
+import 'create_trade_screen.dart';
+import '../../../core/utils/haptic_utils.dart';
+import '../../stage/living_slide_mapper.dart';
+import '../widgets/trade_offer_act.dart';
+import 'trade_chat_screen.dart';
 
 class TradeScreen extends StatefulWidget {
   final int initialTabIndex;
   final String? highlightOfferId;
   final String? highlightTradeId;
+  final String? stageFocusId;
 
   const TradeScreen({
     super.key,
     this.initialTabIndex = 0,
     this.highlightOfferId,
     this.highlightTradeId,
+    this.stageFocusId,
   });
 
   @override
   State<TradeScreen> createState() => _TradeScreenState();
 }
 
-class _TradeScreenState extends State<TradeScreen> with SingleTickerProviderStateMixin {
+class _TradeScreenState extends State<TradeScreen>
+    with SingleTickerProviderStateMixin, RouteAware {
   late TabController _tabController;
   final TextEditingController _searchController = TextEditingController();
   final FocusNode _searchFocus = FocusNode();
@@ -71,6 +88,11 @@ class _TradeScreenState extends State<TradeScreen> with SingleTickerProviderStat
   String? _activeHighlightOfferId;
   String? _activeHighlightTradeId;
   bool _highlightScrollAttempted = false;
+  final StageController _living = StageController();
+  final TradeOfferDraft _offerDraft = TradeOfferDraft();
+  List<LivingSlide> _livingSlides = const [];
+  bool _openedStageFocus = false;
+  String? _pendingFocus;
 
   String _searchQuery = '';
   String _selectedCategory = 'All';
@@ -144,8 +166,57 @@ class _TradeScreenState extends State<TradeScreen> with SingleTickerProviderStat
         _loadTradeHistory();
       }
     });
+    _living.addListener(_onLivingChanged);
+    HubStageBus.register(HubStageBus.trade, _openLinked);
     _loadTradeData();
     WidgetsBinding.instance.addPostFrameCallback((_) => _applyInitialTab());
+  }
+
+  void _onLivingChanged() {
+    if (mounted) setState(() {});
+  }
+
+  void _openLinked(String id) {
+    _pendingFocus = id;
+    _openedStageFocus = false;
+    _maybeOpenStageFocus();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final route = ModalRoute.of(context);
+    if (route is PageRoute) {
+      appRouteObserver.unsubscribe(this);
+      appRouteObserver.subscribe(this, route);
+      HubStageBus.markCurrent(HubStageBus.trade, route.isCurrent);
+    }
+  }
+
+  @override
+  void didPush() => HubStageBus.markCurrent(HubStageBus.trade, true);
+
+  @override
+  void didPopNext() => HubStageBus.markCurrent(HubStageBus.trade, true);
+
+  @override
+  void didPushNext() => HubStageBus.markCurrent(HubStageBus.trade, false);
+
+  @override
+  void didPop() => HubStageBus.markCurrent(HubStageBus.trade, false);
+
+  @override
+  void dispose() {
+    HubStageBus.markCurrent(HubStageBus.trade, false);
+    HubStageBus.unregister(HubStageBus.trade, _openLinked);
+    appRouteObserver.unsubscribe(this);
+    _living.removeListener(_onLivingChanged);
+    _living.dispose();
+    _offerDraft.dispose();
+    _tabController.dispose();
+    _searchController.dispose();
+    _searchFocus.dispose();
+    super.dispose();
   }
 
   GlobalKey _keyForOffer(String offerId) {
@@ -293,10 +364,19 @@ class _TradeScreenState extends State<TradeScreen> with SingleTickerProviderStat
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    return Scaffold(
+    return PopScope(
+      canPop: !_living.isOpen,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) _living.back();
+      },
+      child: Scaffold(
       backgroundColor: isDark ? const Color(0xFF0D0B12) : AppColors.primaryTintSoft,
       body: Stack(
         children: [
+          HubAtmosphere(
+            accent: AppTheme.tradeColor,
+            visible: !_living.isOpen,
+          ),
           Column(
             children: [
               HubScreenTopBar(
@@ -306,12 +386,8 @@ class _TradeScreenState extends State<TradeScreen> with SingleTickerProviderStat
                   HubTopBarIconButton(
                     icon: Icons.swap_horiz_rounded,
                     onTap: () {
-                      if (AppRoutes.requireSignIn(context)) return;
-                      GuardedNavigator.push(context, 
-                        MaterialPageRoute(
-                          builder: (_) => const MyTradesScreen(),
-                        ),
-                      );
+                      if (!guardHubTabForGuest(context, 1)) return;
+                      _tabController.animateTo(1);
                     },
                     isDark: isDark,
                     iconColor: AppTheme.tradeColor,
@@ -350,129 +426,74 @@ class _TradeScreenState extends State<TradeScreen> with SingleTickerProviderStat
               ),
             ],
           ),
-          Align(
-            alignment: Alignment.centerRight,
-            child: _buildRightMiddleCreateTradeButton(),
-          ),
+          if (!_living.isOpen)
+            Align(
+              alignment: Alignment.centerRight,
+              child: HubCreateRail(
+                color: AppTheme.tradeColor,
+                label: 'CREATE TRADE',
+                onTap: _openCreateTrade,
+              ),
+            ),
+          if (_living.isOpen && _livingSlides.isNotEmpty)
+            Positioned.fill(child: _tradeStage()),
         ],
       ),
+    ),
     );
   }
 
-  Widget _buildRightMiddleCreateTradeButton() {
-    return GestureDetector(
-      onTap: () => AppRoutes.navigateToCreateTrade(context),
-      child: Container(
-        height: 130,
-        width: 48,
-        decoration: BoxDecoration(
-          color: AppTheme.tradeColor,
-          borderRadius: const BorderRadius.only(
-            topLeft: Radius.circular(24),
-            bottomLeft: Radius.circular(24),
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: AppTheme.tradeColor.withValues(alpha: 0.3),
-              blurRadius: 20,
-              offset: const Offset(-4, 6),
-            ),
-          ],
-        ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Icon(
-              Icons.add_rounded,
-              color: Colors.white,
-              size: 22,
-            ),
-            const SizedBox(height: 8),
-            RotatedBox(
-              quarterTurns: 3,
-              child: SizedBox(
-                width: 85,
-                child: FittedBox(
-                  fit: BoxFit.scaleDown,
-                  child: Text(
-                    'CREATE TRADE',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 10,
-                      fontWeight: FontWeight.w900,
-                      letterSpacing: 1.5,
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ],
-        ),
+  Widget _tradeStage() {
+    return LivingHeroStage(
+      controller: _living,
+      stageColor: AppTheme.tradeColor,
+      slides: _livingSlides,
+      commitLabel: 'Send offer',
+      markIcon: Icons.swap_horiz_rounded,
+      railIsFocus: true,
+      numberTick: _offerDraft,
+      numberText: () => _offerDraft.numberLabel,
+      railBuilder: (slide) => TradeItemRail(
+        targetId: slide.id,
+        theirValue: slide.value ?? 0,
+        draft: _offerDraft,
+      ),
+      actBuilder: (slide) => TradeOfferExtras(
+        tradeId: slide.id,
+        draft: _offerDraft,
+      ),
+      beforeBuilder: (slide) async => !AppRoutes.requireSignIn(context),
+      onEdit: _editTradeSlide,
+      onMessage: _messageTradeSlide,
+      onCommit: _commitTradeOffer,
+    );
+  }
+
+  void _openCreateTrade() {
+    if (AppRoutes.requireSignIn(context)) return;
+    GuardedNavigator.push(
+      context,
+      CreateStageRoute(
+        color: AppTheme.tradeColor,
+        origin: stageCardOrigin(context),
+        builder: (_) => const CreateTradeScreen(),
       ),
     );
   }
 
   Widget _buildFluidTabSwitcher() {
-    List<String> labels = ["Browse", "Mine", "Draft", "Offers", "History"];
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    return Container(
-      margin: const EdgeInsets.fromLTRB(16, 10, 16, 15),
-      height: 54,
-      decoration: BoxDecoration(
-        color: isDark ? Colors.white.withValues(alpha: 0.04) : Colors.black.withValues(alpha: 0.03),
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Stack(
-        children: [
-          AnimatedAlign(
-            duration: const Duration(milliseconds: 300),
-            curve: Curves.easeOutCubic,
-            alignment: Alignment(-1.0 + (_tabController.index * (2.0 / (labels.length > 1 ? labels.length - 1 : 1))), 0),
-            child: FractionallySizedBox(
-              widthFactor: 1 / labels.length,
-              child: Container(
-                margin: const EdgeInsets.all(4),
-                decoration: BoxDecoration(
-                  color: isDark ? const Color(0xFF1E1A28) : Colors.white,
-                  borderRadius: BorderRadius.circular(16),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.05),
-                      blurRadius: 8,
-                      offset: const Offset(0, 2),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-          Row(
-            children: List.generate(labels.length, (index) => Expanded(
-              child: GestureDetector(
-                onTap: () {
-                  if (!guardHubTabForGuest(context, index)) return;
-                  _tabController.animateTo(index);
-                },
-                child: Container(
-                  color: Colors.transparent,
-                  child: Center(
-                    child: Text(
-                      labels[index],
-                      style: TextStyle(
-                        color: _tabController.index == index
-                            ? (isDark ? Colors.white : const Color(0xFF1C1921))
-                            : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.45),
-                        fontWeight: _tabController.index == index ? FontWeight.w900 : FontWeight.w700,
-                        fontSize: 11,
-                        letterSpacing: -0.1,
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            )),
-          ),
+    return SoftReveal(
+      index: 0,
+      travel: 10,
+      child: HubDeckBar(
+        controller: _tabController,
+        accent: AppTheme.tradeColor,
+        activity: const [
+          HubActivity('Drafts', 2),
+          HubActivity('Offers', 3),
+          HubActivity('History', 4),
         ],
+        guard: (index) => guardHubTabForGuest(context, index),
       ),
     );
   }
@@ -506,66 +527,80 @@ class _TradeScreenState extends State<TradeScreen> with SingleTickerProviderStat
       onRefresh: () => _loadTradeData(refresh: true),
       onLoadMore: _loadMoreBrowseTrades,
       header: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
-          child: Container(
-            decoration: BoxDecoration(
-              color: isDark ? const Color(0xFF1C1826) : Colors.white,
-              borderRadius: BorderRadius.circular(28),
-              boxShadow: isDark
-                  ? null
-                  : [
-                      BoxShadow(
-                        color: AppColors.primary.withValues(alpha: 0.06),
-                        blurRadius: 16,
-                        offset: const Offset(0, 6),
-                      ),
-                    ],
-            ),
-            child: TextField(
-              controller: _searchController,
-              onChanged: (v) => setState(() => _searchQuery = v.trim().toLowerCase()),
-              style: const TextStyle(fontWeight: FontWeight.w600),
-              decoration: BorderlessInputDecoration.search(
-                hintText: 'Search trades',
-                hintStyle: TextStyle(
-                  color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.4),
-                  fontWeight: FontWeight.w600,
+        SoftReveal(
+          index: 1,
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
+            child: Container(
+              decoration: BoxDecoration(
+                color: isDark
+                    ? const Color(0xFF1C1826).withValues(alpha: 0.92)
+                    : Colors.white.withValues(alpha: 0.92),
+                borderRadius: BorderRadius.circular(28),
+                border: Border.all(
+                  color: AppTheme.tradeColor.withValues(alpha: 0.08),
                 ),
-                prefixIcon: Icon(
-                  Icons.search_rounded,
-                  color: isDark ? Colors.white54 : AppTheme.tradeColor,
+                boxShadow: isDark
+                    ? null
+                    : [
+                        BoxShadow(
+                          color: AppTheme.tradeColor.withValues(alpha: 0.08),
+                          blurRadius: 18,
+                          offset: const Offset(0, 8),
+                        ),
+                      ],
+              ),
+              child: TextField(
+                controller: _searchController,
+                onChanged: (v) => setState(() => _searchQuery = v.trim().toLowerCase()),
+                style: const TextStyle(fontWeight: FontWeight.w600),
+                decoration: BorderlessInputDecoration.search(
+                  hintText: 'Search trades',
+                  hintStyle: TextStyle(
+                    color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.4),
+                    fontWeight: FontWeight.w600,
+                  ),
+                  prefixIcon: Icon(
+                    Icons.search_rounded,
+                    color: isDark ? Colors.white54 : AppTheme.tradeColor,
+                  ),
                 ),
               ),
             ),
           ),
         ),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16),
-          child: _buildCategoryFilter(),
+        SoftReveal(
+          index: 2,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: _buildCategoryFilter(),
+          ),
         ),
         const SizedBox(height: 16),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16),
-          child: AdPlacementSection(
-            key: ValueKey('trade_ads_$_adFeedRefresh'),
-            placementKey: 'trade_feed',
-            title: 'Sponsored Exchange',
-            refreshToken: _adFeedRefresh,
+        SoftReveal(
+          index: 3,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: AdPlacementSection(
+              key: ValueKey('trade_ads_$_adFeedRefresh'),
+              placementKey: 'trade_feed',
+              title: 'Sponsored Exchange',
+              refreshToken: _adFeedRefresh,
+            ),
           ),
         ),
         const SizedBox(height: 16),
         if (_showSmartMatches && _selectedSortOption == 'smart_match')
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: _buildSmartMatchBanner(),
+          SoftReveal(
+            index: 4,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: _buildSmartMatchBanner(),
+            ),
           ),
       ],
-      onCardTap: (item) => _navigateToTradeDetails(item.raw ?? {}),
-      onPrimaryAction: (item) {
-        if (AppRoutes.requireSignIn(context)) return;
-        _navigateToTradeDetails(item.raw ?? {});
-      },
+      onCardTap: (item) => _openLivingTrades(filtered, item.id, mine: false),
+      onPrimaryAction: (item) => _openLivingTrades(filtered, item.id, mine: false),
       emptyAccent: AppTheme.tradeColor,
       emptyIcon: Icons.swap_horiz_rounded,
       emptyTitle: 'No trades found',
@@ -647,7 +682,7 @@ class _TradeScreenState extends State<TradeScreen> with SingleTickerProviderStat
                 'Add photos for faster matches',
                 'Set pickup or delivery preferences',
               ],
-              onCreate: () => AppRoutes.navigateToCreateTrade(context),
+              onCreate: () => _openCreateTrade(),
             )
           : ListView(
               physics: const BouncingScrollPhysics(),
@@ -657,7 +692,7 @@ class _TradeScreenState extends State<TradeScreen> with SingleTickerProviderStat
                 HubMineCreateBar(
                   accentColor: AppTheme.tradeColor,
                   label: 'Post another trade',
-                  onTap: () => AppRoutes.navigateToCreateTrade(context),
+                  onTap: () => _openCreateTrade(),
                 ),
               ],
             ),
@@ -1076,8 +1111,173 @@ class _TradeScreenState extends State<TradeScreen> with SingleTickerProviderStat
     }
   }
 
-  void _navigateToTradeDetails(Map<String, dynamic> trade) {
-    _fetchTradeDetailsAndNavigate(trade['id'] ?? '');
+  void _navigateToTradeDetails(Map<String, dynamic> trade, {Rect? origin}) {
+    final id = (trade['id'] ?? '').toString();
+    if (id.isEmpty) return;
+    final tab = _tabController.index;
+    if (tab == 1) {
+      _openLivingTrades(_myActiveTrades, id, mine: true, origin: origin);
+      return;
+    }
+    if (tab == 4) {
+      _openLivingTrades(_completedTrades, id, mine: true, origin: origin);
+      return;
+    }
+    final inBrowse = _availableTrades.any((item) => item['id']?.toString() == id);
+    _openLivingTrades(
+      inBrowse ? _availableTrades : <Map<String, dynamic>>[trade],
+      id,
+      mine: trade['ownerFirstName']?.toString() == 'Me',
+      origin: origin,
+    );
+  }
+
+  void _openLivingTrades(
+    List<Map<String, dynamic>> maps,
+    String id, {
+    required bool mine,
+    Rect? origin,
+  }) {
+    final userId = context.read<AuthProvider>().currentUser?.id;
+    final slides = maps
+        .map(
+          (item) => LivingSlideMapper.fromTradeMap(
+            item,
+            currentUserId: userId,
+            treatAsMine: mine,
+          ),
+        )
+        .where((slide) => slide.id.isNotEmpty)
+        .toList();
+    if (slides.isEmpty) return;
+    final index = slides.indexWhere((slide) => slide.id == id);
+    _offerDraft.clear();
+    setState(() => _livingSlides = slides);
+    _living.open(slides[index < 0 ? 0 : index].id, origin: origin);
+  }
+
+  Future<void> _maybeOpenStageFocus() async {
+    final pending = _pendingFocus?.trim();
+    final id = (pending != null && pending.isNotEmpty)
+        ? pending
+        : widget.stageFocusId?.trim();
+    if (id == null || id.isEmpty || _openedStageFocus || !mounted) return;
+    if (_availableTrades.any((item) => item['id']?.toString() == id)) {
+      _openedStageFocus = true;
+      _openLivingTrades(_availableTrades, id, mine: false);
+      return;
+    }
+    if (_isLoading) return;
+    _openedStageFocus = true;
+    final raw = await context.read<TradeBackendProvider>().getTrade(id);
+    if (!mounted || raw == null) return;
+    _openLivingTrades([Map<String, dynamic>.from(raw)], id, mine: false);
+  }
+
+  Future<StageCommitResult?> _commitTradeOffer(LivingSlide slide) async {
+    if (AppRoutes.requireSignIn(context)) return null;
+    final backend = context.read<TradeBackendProvider>();
+    final note = _offerDraft.message.text.trim();
+    final isItem = _offerDraft.isItemOffer;
+
+    if (isItem) {
+      final offered = _offerDraft.offeredTradeId;
+      if (offered == null || offered.isEmpty) {
+        HapticUtils.error();
+        AppToast.show(context, 'Pick one of your items');
+        return null;
+      }
+    } else {
+      final amount = double.tryParse(_offerDraft.amount.text.trim());
+      if (amount == null || amount <= 0) {
+        HapticUtils.error();
+        AppToast.show(context, 'Enter a cash amount in BYC');
+        return null;
+      }
+    }
+
+    final uneven = isItem &&
+        _offerDraft.mineValue != null &&
+        _offerDraft.numberLabel.isNotEmpty &&
+        _offerDraft.numberLabel != 'Even';
+    final ok = await backend.createOffer(
+      slide.id,
+      offeredTradeId: isItem ? _offerDraft.offeredTradeId : null,
+      amount: isItem ? null : _offerDraft.amount.text.trim(),
+      message: note.isEmpty ? null : note,
+    );
+    if (!mounted) return null;
+    if (!ok) {
+      HapticUtils.error();
+      AppToast.show(context, backend.error ?? 'Could not send the offer');
+      return null;
+    }
+    HapticUtils.heavy();
+    _offerDraft.clear();
+    final offerId = backend.lastCreatedOfferId;
+    if (offerId != null && (uneven || !isItem)) {
+      Future.delayed(const Duration(milliseconds: 1300), () {
+        if (!mounted) return;
+        _openExistingNegotiation({
+          'id': offerId,
+          'tradeId': slide.id,
+          'direction': 'sent',
+          'ownerId': slide.ownerId,
+          'ownerName': slide.ownerName,
+        });
+      });
+      if (uneven) {
+        return const StageCommitResult('Offer sent · even it with PayPal');
+      }
+      return const StageCommitResult('Cash offer sent');
+    }
+    return const StageCommitResult('Offer sent');
+  }
+
+  Future<void> _editTradeSlide(LivingSlide slide) async {
+    if (AppRoutes.requireSignIn(context)) return;
+    final raw = await context.read<TradeBackendProvider>().getTrade(slide.id);
+    if (!mounted || raw == null) {
+      if (mounted) AppToast.show(context, 'Could not open this trade');
+      return;
+    }
+    try {
+      final trade = trade_models.Trade.fromJson(Map<String, dynamic>.from(raw));
+      if (!mounted) return;
+      AppRoutes.navigateToEditTrade(context, trade);
+    } catch (_) {
+      if (mounted) AppToast.show(context, 'Could not open this trade');
+    }
+  }
+
+  Future<void> _messageTradeSlide(LivingSlide slide) async {
+    if (AppRoutes.requireSignIn(context)) return;
+    var partnerId = slide.ownerId;
+    var partnerName = slide.ownerName;
+    trade_models.Trade? trade;
+    final raw = await context.read<TradeBackendProvider>().getTrade(slide.id);
+    if (!mounted) return;
+    if (raw != null) {
+      try {
+        trade = trade_models.Trade.fromJson(Map<String, dynamic>.from(raw));
+        partnerId = trade.owner.id;
+        partnerName = trade.owner.name;
+      } catch (_) {}
+    }
+    if (partnerId.isEmpty) {
+      AppToast.show(context, 'Could not open chat');
+      return;
+    }
+    await GuardedNavigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => TradeChatScreen(
+          trade: trade,
+          partnerId: partnerId,
+          partnerName: partnerName.isEmpty ? 'Member' : partnerName,
+        ),
+      ),
+    );
   }
 
   void _shareTrade(Map<String, dynamic> trade) {
@@ -1085,21 +1285,6 @@ class _TradeScreenState extends State<TradeScreen> with SingleTickerProviderStat
     final title = (trade['title'] ?? 'Untitled').toString();
     if (id.isEmpty) return;
     ShareUtils.shareTrade(context, id: id, title: title);
-  }
-
-  Future<void> _fetchTradeDetailsAndNavigate(String tradeId) async {
-    try {
-      final tradeProvider = Provider.of<TradeBackendProvider>(context, listen: false);
-      final tradeDetails = await tradeProvider.getTrade(tradeId);
-      if (tradeDetails != null) {
-        final tradeObj = _createTradeObjectFromApiResponse(tradeDetails);
-        AppRoutes.navigateToTradeDetails(context, tradeObj);
-      } else {
-        _showErrorSnackbar('Failed to load trade details');
-      }
-    } catch (e) {
-      _showErrorSnackbar('Failed to load trade details');
-    }
   }
 
   Future<void> _acceptOffer(String offerId) async {
@@ -1238,6 +1423,7 @@ class _TradeScreenState extends State<TradeScreen> with SingleTickerProviderStat
         _browseLoadError = null;
       });
       _resolveImages(_availableTrades);
+      await _maybeOpenStageFocus();
     } catch (e) {
       if (mounted) {
         setState(() {
@@ -1245,6 +1431,7 @@ class _TradeScreenState extends State<TradeScreen> with SingleTickerProviderStat
           _browseLoadError = NetworkErrorMessage.forListingLoad(e);
         });
       }
+      await _maybeOpenStageFocus();
     }
   }
 
@@ -1329,87 +1516,38 @@ class _TradeScreenState extends State<TradeScreen> with SingleTickerProviderStat
       }
 
       final List<Map<String, dynamic>> aggregated = [];
-      final receivedTradeStatuses = ['OPEN', 'IN_OFFER'];
-      final tradesForReceivedOffers = <Map<String, dynamic>>[];
-      
-      for (final status in receivedTradeStatuses) {
-        try {
-          final res = await backend.listMyTrades(ownerId: me.id, status: status, page: 1, size: 50);
-          final items = (res['items'] as List?) ?? [];
-          for (final t in items) {
-            tradesForReceivedOffers.add({
-              'id': t['id'],
-              'title': t['title'] ?? 'Trade',
-            });
-          }
-        } catch (_) {}
-      }
-      
-      final seenIds = <String>{};
-      for (final trade in tradesForReceivedOffers) {
-        final id = trade['id']?.toString() ?? '';
-        if (id.isEmpty || seenIds.contains(id)) continue;
-        seenIds.add(id);
-        try {
-          final list = await backend.listOffers(id);
-          for (final o in list) {
-            final bidderId = (o['bidderId'] ?? '').toString();
-            if (bidderId == me.id) continue; 
-            if (_isOfferVisibleInOffersTab(o['status'])) {
-              final bidder = o['bidder'] is Map ? o['bidder'] as Map : null;
-              aggregated.add({
-                'id': o['id'] ?? o['offerId'],
-                'tradeId': trade['id'],
-                'tradeTitle': trade['title'],
-                'amount': o['amount'],
-                'status': o['status'],
-                'direction': 'received',
-                'bidderId': o['bidderId'],
-                'bidderName': bidder?['profile']?['displayName'] ?? bidder?['displayName'] ?? 'User',
-                'message': (o['message'] ?? '').toString(),
-                'createdAt': o['createdAt'],
-                'offeredTrade': o['offeredTrade'],
-              });
-            }
-          }
-        } catch (_) {}
-      }
-
       try {
-        final allTradesRes = await backend.listMyTrades(ownerId: '', page: 1, size: 50); 
-        final allTrades = (allTradesRes['items'] as List?) ?? [];
-
-        for (final trade in allTrades) {
-           final tradeId = trade['id']?.toString() ?? '';
-           final ownerId = (trade['owner'] is Map) ? (trade['owner']['id']?.toString() ?? '') : '';
-           final tradeStatus = (trade['status'] ?? '').toString().toUpperCase();
-           if (tradeId.isEmpty || ownerId == me.id) continue;
-           if (tradeStatus == 'CLOSED' || tradeStatus == 'CANCELLED') continue;
-
-           try {
-             final list = await backend.listOffers(tradeId);
-             for (final o in list) {
-               final bidderId = (o['bidderId'] ?? '').toString();
-
-               if (bidderId == me.id && _isOfferVisibleInOffersTab(o['status'])) {
-                 final owner = trade['owner'] is Map ? trade['owner'] as Map : null;
-                 aggregated.add({
-                    'id': o['id'] ?? o['offerId'],
-                    'message': (o['message'] ?? '').toString(),
-                    'status': o['status'],
-                    'tradeId': tradeId,
-                    'tradeTitle': trade['title']?.toString() ?? 'Trade',
-                    'amount': (o['amount']?.toString() ?? ''),
-                    'bidderId': bidderId,
-                    'ownerId': ownerId,
-                    'ownerName': owner?['profile']?['displayName'] ?? owner?['displayName'] ?? 'Owner',
-                    'createdAt': o['createdAt'],
-                    'offeredTrade': o['offeredTrade'],
-                    'direction': 'sent',
-                 });
-               }
-             }
-           } catch (_) {}
+        final res = await backend.listMyOffers(page: 1, size: 50);
+        final items = (res['items'] as List?) ?? [];
+        for (final raw in items) {
+          if (raw is! Map) continue;
+          final o = Map<String, dynamic>.from(raw);
+          if (!_isOfferVisibleInOffersTab(o['status'])) continue;
+          final trade = o['trade'] is Map ? Map<String, dynamic>.from(o['trade'] as Map) : null;
+          final bidder = o['bidder'] is Map ? o['bidder'] as Map : null;
+          final owner = trade?['owner'] is Map ? trade!['owner'] as Map : null;
+          final direction = (o['direction'] ?? (o['bidderId']?.toString() == me.id ? 'sent' : 'received')).toString();
+          aggregated.add({
+            'id': o['id'] ?? o['offerId'],
+            'tradeId': o['tradeId'] ?? trade?['id'],
+            'tradeTitle': o['tradeTitle'] ?? trade?['title'] ?? 'Trade',
+            'amount': o['amount'],
+            'status': o['status'],
+            'direction': direction,
+            'bidderId': o['bidderId'],
+            'bidderName': o['bidderName'] ??
+                bidder?['profile']?['displayName'] ??
+                bidder?['displayName'] ??
+                'User',
+            'ownerId': o['ownerId'] ?? trade?['ownerId'] ?? owner?['id'],
+            'ownerName': o['ownerName'] ??
+                owner?['profile']?['displayName'] ??
+                owner?['displayName'] ??
+                'Owner',
+            'message': (o['message'] ?? '').toString(),
+            'createdAt': o['createdAt'],
+            'offeredTrade': o['offeredTrade'],
+          });
         }
       } catch (_) {}
 
@@ -1476,11 +1614,14 @@ class _TradeScreenState extends State<TradeScreen> with SingleTickerProviderStat
   }
 
   Widget _buildTradeCard(Map<String, dynamic> trade) {
-    return Padding(
+    return Builder(
+      builder: (cardContext) {
+        final origin = stageCardOrigin(cardContext);
+        return Padding(
       padding: const EdgeInsets.only(bottom: 14),
       child: _build3DContainer(
         child: DebouncedTap(
-          onTap: () => _navigateToTradeDetails(trade),
+          onTap: () => _navigateToTradeDetails(trade, origin: origin),
           child: Column(
             children: [
               Padding(
@@ -1512,6 +1653,8 @@ class _TradeScreenState extends State<TradeScreen> with SingleTickerProviderStat
           ),
         ),
       ),
+    );
+      },
     );
   }
 
@@ -1580,7 +1723,7 @@ class _TradeScreenState extends State<TradeScreen> with SingleTickerProviderStat
             ),
           ),
           DebouncedTap(
-            onTap: () => _navigateToTradeDetails(trade),
+            onTap: () => _navigateToTradeDetails(trade, origin: stageCardOrigin(context)),
             child: Row(
               children: [
                 Text("View", style: TextStyle(color: scheme.primary, fontWeight: FontWeight.w900, fontSize: 13)),

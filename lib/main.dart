@@ -29,6 +29,7 @@ import 'features/trade/screens/trade_offers_screen.dart';
 import 'features/trade/screens/negotiation_screen.dart';
 import 'features/trade/models/trade_models.dart' as trade_models;
 import 'features/trade/providers/trade_backend_provider.dart';
+import 'features/trade/services/trade_topup_events.dart';
 import 'features/gifting/screens/create_gift_screen.dart';
 import 'features/gifting/screens/gifting_screen.dart';
 import 'features/gifting/screens/gift_details_screen.dart';
@@ -208,11 +209,9 @@ void main() {
 ///
 /// We no longer gate on a fixed-duration splash timer. Instead, the splash
 /// widget is rendered directly by [RootRouter] whenever it is still deciding
-/// which surface to show (auth loading, onboarding flag loading). This keeps
-/// the "BYBATA · Trade. Gift. Donate and Grow Together" text visible from
-/// the first frame all the way up to the moment the real destination is
-/// ready — no artificial 2.5s delay, no flicker between the native launch
-/// screen and the Flutter splash.
+/// which surface to show (auth loading, onboarding flag loading). The splash
+/// stays up until the real destination is ready — no artificial 2.5s delay,
+/// no flicker between the native launch screen and the Flutter splash.
 class _SplashWrapper extends StatelessWidget {
   const _SplashWrapper();
 
@@ -353,10 +352,14 @@ class MyApp extends StatelessWidget {
                     final highlightTradeId = args is Map
                         ? args['highlightTradeId'] as String?
                         : null;
+                    final stageFocusId = args is Map
+                        ? args['stageFocusId'] as String?
+                        : null;
                     return TradeScreen(
                       initialTabIndex: tabIndex,
                       highlightOfferId: highlightOfferId,
                       highlightTradeId: highlightTradeId,
+                      stageFocusId: stageFocusId,
                     );
                   },
                   AppConstants.giftingRoute: (context) {
@@ -370,10 +373,14 @@ class MyApp extends StatelessWidget {
                     final highlightGiftId = args is Map
                         ? args['highlightGiftId'] as String?
                         : null;
+                    final stageFocusId = args is Map
+                        ? args['stageFocusId'] as String?
+                        : null;
                     return GiftingScreen(
                       initialTabIndex: tabIndex,
                       highlightRequestId: highlightRequestId,
                       highlightGiftId: highlightGiftId,
+                      stageFocusId: stageFocusId,
                     );
                   },
                   AppConstants.donationsRoute: (context) {
@@ -381,7 +388,13 @@ class MyApp extends StatelessWidget {
                     final tabIndex = args is Map
                         ? (args['initialTabIndex'] as int?) ?? 0
                         : 0;
-                    return DonationsScreen(initialTabIndex: tabIndex);
+                    final stageFocusId = args is Map
+                        ? args['stageFocusId'] as String?
+                        : null;
+                    return DonationsScreen(
+                      initialTabIndex: tabIndex,
+                      stageFocusId: stageFocusId,
+                    );
                   },
                   // KARMA routes
                   '/karma': (context) => const KarmaScreen(),
@@ -1036,7 +1049,7 @@ class _RootRouterState extends State<RootRouter> {
                 : 'Having trouble connecting',
             message: online == false
                 ? NetworkErrorMessage.offline
-                : 'Bybata is taking longer than usual to start. Check your connection and try again.',
+                : 'Startup is taking longer than usual. Check your connection and try again.',
             onRetry: _handleStartupRetry,
             onContinueOffline: _handleContinueOffline,
             continueOfflineLabel: auth.hasCachedSession
@@ -1172,6 +1185,26 @@ class _DeepLinkHandlerState extends State<_DeepLinkHandler> {
     return (type: segs[0], id: segs.length > 1 ? segs[1] : '', query: query);
   }
 
+  void _handleTradeTopUpReturn(Map<String, String> query) {
+    final status = query['status'];
+    final cancelled = query['result'] == 'cancelled';
+    TradeTopUpEvents.instance.emit(TradeTopUpEvent(
+      cancelled ? TradeTopUpEventKind.paypalCancelled : TradeTopUpEventKind.paypalReturned,
+      tradeId: query['tradeId'],
+      topUpId: query['topUpId'],
+      status: status,
+    ));
+    final message = cancelled
+        ? 'PayPal checkout was cancelled. You can try again.'
+        : status == 'CAPTURED'
+            ? 'PayPal payment received. This trade is even.'
+            : 'Back from PayPal. Checking your payment…';
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      AppToast.info(context, message);
+    });
+  }
+
   Future<void> _handleUri(Uri uri) async {
     final segs = uri.pathSegments;
     final query = uri.queryParameters;
@@ -1190,6 +1223,9 @@ class _DeepLinkHandlerState extends State<_DeepLinkHandler> {
           break;
         case 'trade':
           await _handleAuthRequiredDeepLink('trade', id);
+          break;
+        case 'trade-topup':
+          _handleTradeTopUpReturn(bybataQuery);
           break;
         case 'gift':
           await _handleAuthRequiredDeepLink('gift', id);
@@ -1541,20 +1577,13 @@ class _DeepLinkHandlerState extends State<_DeepLinkHandler> {
   void _navigateToDeepLink(String type, String id) {
     switch (type) {
       case 'trade':
-        GuardedNavigator.pushNamed(context, '/trade-details', arguments: {'id': id});
+        AppRoutes.navigateToTradeDetailsById(context, id);
         break;
       case 'gift':
-        GuardedNavigator.push(context, 
-          MaterialPageRoute(builder: (_) => GiftDetailsLoader(giftId: id)),
-        );
+        AppRoutes.navigateToGiftDetailsById(context, id);
         break;
       case 'campaign':
-        GuardedNavigator.pushNamed(context, AppConstants.myCampaignsRoute);
-        GuardedNavigator.push(context, 
-          MaterialPageRoute(
-            builder: (_) => CampaignDetailsLoader(campaignId: id),
-          ),
-        );
+        AppRoutes.navigateToCampaignDetailsById(context, id);
         break;
       default:
         break;

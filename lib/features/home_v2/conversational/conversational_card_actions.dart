@@ -36,11 +36,11 @@ class ConversationalCardActions {
     );
     switch (data.module) {
       case SocialListingModule.trade:
-        AppRoutes.navigateToTradeDetailsById(context, data.id);
+        AppRoutes.navigateToTradeHub(context, stageFocusId: data.id);
       case SocialListingModule.gift:
-        AppRoutes.navigateToGiftDetailsById(context, data.id);
+        AppRoutes.navigateToGiftHub(context, stageFocusId: data.id);
       case SocialListingModule.donation:
-        AppRoutes.navigateToCampaignDetailsById(context, data.id);
+        AppRoutes.navigateToDonationsHub(context, stageFocusId: data.id);
     }
   }
 

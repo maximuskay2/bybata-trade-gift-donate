@@ -20,6 +20,7 @@ import '../../../core/widgets/listing_media_picker.dart';
 import '../../../core/models/listing_media.dart';
 import '../../../core/services/listing_media_upload_service.dart';
 import '../../../core/widgets/listing_creation_progress.dart';
+import '../../../core/motion/publish_finale.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/providers/auth_provider.dart';
 import '../../../core/providers/wallet_provider.dart';
@@ -29,7 +30,6 @@ import '../../../core/config/env_config.dart';
 import '../../../core/api/api_client.dart';
 import '../widgets/campaign_verification_dialog.dart';
 import '../../../core/navigation/app_routes.dart';
-import 'donations_screen.dart';
 import '../../../core/widgets/edit_form_scaffold.dart';
 import '../../../core/widgets/editable_listing_media_picker.dart';
 import '../../../core/utils/listing_form_validation.dart';
@@ -259,6 +259,17 @@ class _CreateCampaignScreenState extends State<CreateCampaignScreen> with Ticker
   }
 
   bool _validateStep(int step) => _isStepValid(step);
+
+  Future<void> _openReview() async {
+    for (var step = 0; step < 2; step++) {
+      if (!_isStepValid(step)) {
+        await _goToStep(step);
+        _failValidation();
+        return;
+      }
+    }
+    await _goToStep(2);
+  }
 
   void _nextStep() {
     if (_validateCurrentStep() && _currentStep < 2) {
@@ -552,6 +563,13 @@ class _CreateCampaignScreenState extends State<CreateCampaignScreen> with Ticker
         campaignTitle: campaign.title,
       );
       if (!mounted) return;
+      await showPublishFinale(
+        context,
+        line: 'Live',
+        color: AppTheme.donationColor,
+        imagePath: _mediaDraft.heroPath,
+      );
+      if (!mounted) return;
       if (action == CampaignVerificationAction.openDonationsHub) {
         AppRoutes.replaceWithDonationsHub(context, tabIndex: 1);
       } else {
@@ -776,7 +794,9 @@ class _CreateCampaignScreenState extends State<CreateCampaignScreen> with Ticker
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final isDark = _isEdit
+        ? Theme.of(context).brightness == Brightness.dark
+        : false;
     final accent = AppTheme.donationColor;
 
     if (_isEdit) {
@@ -788,6 +808,8 @@ class _CreateCampaignScreenState extends State<CreateCampaignScreen> with Ticker
         isLoading: _isLoading,
         isDirty: _isDirty,
         onSave: _saveCampaign,
+        swipeCommitLabel: 'Save Campaign',
+        onSwipeCommit: _saveCampaign,
         child: _buildEditForm(isDark, accent),
       );
     }
@@ -829,11 +851,36 @@ class _CreateCampaignScreenState extends State<CreateCampaignScreen> with Ticker
           ),
         ),
         onBack: _previousStep,
-        onPrimary: _currentStep < 2 ? _nextStep : _launchCampaign,
-        primaryLabel: _currentStep < 2 ? 'Continue' : 'Launch Campaign',
+        onPrimary: _currentStep < 2 ? _openReview : _launchCampaign,
+        primaryLabel: _currentStep < 2 ? 'Review' : 'Launch Campaign',
+        chapterCaption: '${_currentStep + 1} of 3 · ${[
+          'Basics',
+          'Story & goal',
+          'Launch',
+        ][_currentStep]}',
+        swipeCommitLabel: _currentStep < 2 ? null : 'Launch Campaign',
+        onSwipeCommit: _currentStep < 2 ? null : _launchCampaign,
+        onStage: true,
+        heroPath: _mediaDraft.heroPath,
+        onHeroTap: _captureFromHero,
+        reviewLabel: _currentStep < 2 ? 'Continue' : null,
         isLoading: _isLoading,
       ),
     );
+  }
+
+  Future<void> _captureFromHero() async {
+    final next = await ListingMediaPicker.captureInto(
+      context,
+      draft: _mediaDraft,
+      accentColor: AppTheme.donationColor,
+      title: 'Add photos to your campaign',
+    );
+    if (!mounted || next == null) return;
+    setState(() {
+      _mediaDraft = next;
+      _clearValidationHighlight();
+    });
   }
 
   String _campaignCategoryLabel(CampaignCategory cat) {
@@ -1049,6 +1096,7 @@ class _CreateCampaignScreenState extends State<CreateCampaignScreen> with Ticker
               accentColor: accent,
               title: 'Add photos to your campaign',
               moduleLabel: 'donation',
+              hidePrimaryCapture: true,
               onChanged: (draft) => setState(() {
                 _mediaDraft = draft;
                 _clearValidationHighlight();
